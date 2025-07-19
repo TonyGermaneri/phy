@@ -66,15 +66,15 @@ function onSimulationReady() {
 function updateParams(params) {
   const oldNumParticles = simulationParams.numParticles
   const oldResolution = simulationParams.resolution
-  
+
   Object.assign(simulationParams, params)
-  
+
   // Check if parameters that require restart have changed
   const needsRestart = (
-    params.numParticles !== oldNumParticles || 
+    params.numParticles !== oldNumParticles ||
     params.resolution !== oldResolution
   )
-  
+
   if (needsRestart && simulation.value) {
     // Small delay to ensure parameter updates are applied first
     setTimeout(() => {

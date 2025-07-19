@@ -4,13 +4,13 @@
     class="control-navbar"
     density="compact"
     floating
-    :style="{ 
-      'backdrop-filter': 'blur(10px)', 
-      position: 'fixed', 
-      top: '16px', 
-      left: '16px', 
-      right: '16px', 
-      width: 'auto', 
+    :style="{
+      'backdrop-filter': 'blur(10px)',
+      position: 'fixed',
+      top: '16px',
+      left: '16px',
+      right: '16px',
+      width: 'auto',
       'border-radius': '12px',
       transition: 'opacity 0.8s ease-in-out',
       opacity: showNavbar ? 1 : 0,
@@ -57,6 +57,14 @@
     />
 
     <v-btn
+      :icon="lfoEnabled ? 'mdi-sine-wave' : 'mdi-sine-wave'"
+      variant="text"
+      :color="lfoEnabled ? 'green' : 'grey'"
+      @click="toggleLFO"
+      :title="lfoEnabled ? 'LFOs ON - Click to disable' : 'LFOs OFF - Click to enable'"
+    />
+
+    <v-btn
       icon="mdi-cog"
       variant="text"
       color="white"
@@ -70,13 +78,13 @@
       v-if="showControls"
       class="controls-panel"
       color="rgba(0,0,0,0.8)"
-      :style="{ 
-        'backdrop-filter': 'blur(15px)', 
-        position: 'fixed', 
-        top: '80px', 
-        left: '16px', 
-        right: '16px', 
-        'border-radius': '12px', 
+      :style="{
+        'backdrop-filter': 'blur(15px)',
+        position: 'fixed',
+        top: '80px',
+        left: '16px',
+        right: '16px',
+        'border-radius': '12px',
         'z-index': '1001',
         transition: 'opacity 0.8s ease-in-out',
         opacity: showNavbar ? 1 : 0,
@@ -87,23 +95,6 @@
     >
       <v-card-text>
         <v-row dense>
-          <!-- Particle Count -->
-          <v-col cols="12" sm="6" md="4">
-            <div class="control-group">
-              <label class="control-label">Particles: {{ formatNumber(params.numParticles) }}</label>
-              <v-slider
-                v-model="params.numParticles"
-                :min="5000"
-                :max="100000"
-                :step="5000"
-                color="blue"
-                track-color="grey-darken-1"
-                thumb-color="blue"
-                hide-details
-              />
-            </div>
-          </v-col>
-
           <!-- Sensor Distance -->
           <v-col cols="12" sm="6" md="4">
             <div class="control-group">
@@ -117,6 +108,16 @@
                 track-color="grey-darken-1"
                 thumb-color="green"
                 hide-details
+                @update:model-value="updateBaseValue('sensorDistance', $event)"
+              />
+              <!-- LFO Controls -->
+              <LfoControl
+                v-model:rate="lfoParams.sensorDistance.rate"
+                v-model:amplitude="lfoParams.sensorDistance.amplitude"
+                :max-amplitude="20"
+                :step="0.1"
+                :disabled="!lfoEnabled"
+                color="green"
               />
             </div>
           </v-col>
@@ -134,6 +135,16 @@
                 track-color="grey-darken-1"
                 thumb-color="orange"
                 hide-details
+                @update:model-value="updateBaseValue('sensorAngle', $event)"
+              />
+              <!-- LFO Controls -->
+              <LfoControl
+                v-model:rate="lfoParams.sensorAngle.rate"
+                v-model:amplitude="lfoParams.sensorAngle.amplitude"
+                :max-amplitude="Math.PI"
+                :step="0.02"
+                :disabled="!lfoEnabled"
+                color="orange"
               />
             </div>
           </v-col>
@@ -151,6 +162,16 @@
                 track-color="grey-darken-1"
                 thumb-color="purple"
                 hide-details
+                @update:model-value="updateBaseValue('rotationAngle', $event)"
+              />
+              <!-- LFO Controls -->
+              <LfoControl
+                v-model:rate="lfoParams.rotationAngle.rate"
+                v-model:amplitude="lfoParams.rotationAngle.amplitude"
+                :max-amplitude="Math.PI / 2"
+                :step="0.01"
+                :disabled="!lfoEnabled"
+                color="purple"
               />
             </div>
           </v-col>
@@ -168,6 +189,16 @@
                 track-color="grey-darken-1"
                 thumb-color="red"
                 hide-details
+                @update:model-value="updateBaseValue('moveDistance', $event)"
+              />
+              <!-- LFO Controls -->
+              <LfoControl
+                v-model:rate="lfoParams.moveDistance.rate"
+                v-model:amplitude="lfoParams.moveDistance.amplitude"
+                :max-amplitude="5"
+                :step="0.1"
+                :disabled="!lfoEnabled"
+                color="red"
               />
             </div>
           </v-col>
@@ -185,6 +216,16 @@
                 track-color="grey-darken-1"
                 thumb-color="cyan"
                 hide-details
+                @update:model-value="updateBaseValue('decayFactor', $event)"
+              />
+              <!-- LFO Controls -->
+              <LfoControl
+                v-model:rate="lfoParams.decayFactor.rate"
+                v-model:amplitude="lfoParams.decayFactor.amplitude"
+                :max-amplitude="1"
+                :step="0.01"
+                :disabled="!lfoEnabled"
+                color="cyan"
               />
             </div>
           </v-col>
@@ -201,6 +242,33 @@
                 color="yellow"
                 track-color="grey-darken-1"
                 thumb-color="yellow"
+                hide-details
+                @update:model-value="updateBaseValue('depositAmount', $event)"
+              />
+              <!-- LFO Controls -->
+              <LfoControl
+                v-model:rate="lfoParams.depositAmount.rate"
+                v-model:amplitude="lfoParams.depositAmount.amplitude"
+                :max-amplitude="20"
+                :step="0.2"
+                :disabled="!lfoEnabled"
+                color="yellow"
+              />
+            </div>
+          </v-col>
+
+          <!-- Particle Count -->
+          <v-col cols="12" sm="6" md="4">
+            <div class="control-group">
+              <label class="control-label">Particles: {{ formatNumber(params.numParticles) }}</label>
+              <v-slider
+                v-model="params.numParticles"
+                :min="5000"
+                :max="1000000"
+                :step="1"
+                color="blue"
+                track-color="grey-darken-1"
+                thumb-color="blue"
                 hide-details
               />
             </div>
@@ -250,6 +318,7 @@
 
 <script setup>
 import { ref, reactive, watch, onMounted, onUnmounted } from 'vue'
+import LfoControl from './LfoControl.vue'
 
 const props = defineProps({
   isPlaying: Boolean
@@ -259,19 +328,33 @@ const emit = defineEmits(['update-params', 'toggle-play', 'reset'])
 
 const showControls = ref(false)
 const showNavbar = ref(true)
+const lfoEnabled = ref(true)
 let hideTimer = null
 let isMouseOverControls = ref(false)
 
 const params = reactive({
-  numParticles: 50000,
+  numParticles: 1000000,
   sensorDistance: 9.0,
   sensorAngle: 0.5,
   rotationAngle: 0.3,
   moveDistance: 1.0,
   decayFactor: 0.95,
   depositAmount: 5.0,
-  resolution: 0.3
+  resolution: 1.0
 })
+
+// LFO parameters for each control (removed numParticles)
+const lfoParams = reactive({
+  sensorDistance: { rate: 0, amplitude: 0, baseValue: 9.0 },
+  sensorAngle: { rate: 0, amplitude: 0, baseValue: 0.5 },
+  rotationAngle: { rate: 0, amplitude: 0, baseValue: 0.3 },
+  moveDistance: { rate: 0, amplitude: 0, baseValue: 1.0 },
+  decayFactor: { rate: 0, amplitude: 0, baseValue: 0.95 },
+  depositAmount: { rate: 0, amplitude: 0, baseValue: 5.0 }
+})
+
+let animationId = null
+let startTime = Date.now()
 
 const presets = [
   {
@@ -284,8 +367,7 @@ const presets = [
       rotationAngle: 0.3,
       moveDistance: 1.0,
       decayFactor: 0.95,
-      depositAmount: 5.0,
-      resolution: 0.3
+      depositAmount: 5.0
     }
   },
   {
@@ -298,8 +380,7 @@ const presets = [
       rotationAngle: 0.4,
       moveDistance: 0.8,
       decayFactor: 0.92,
-      depositAmount: 8.0,
-      resolution: 0.25
+      depositAmount: 8.0
     }
   },
   {
@@ -312,8 +393,7 @@ const presets = [
       rotationAngle: 0.2,
       moveDistance: 1.5,
       decayFactor: 0.98,
-      depositAmount: 3.0,
-      resolution: 0.4
+      depositAmount: 3.0
     }
   },
   {
@@ -326,8 +406,7 @@ const presets = [
       rotationAngle: 0.8,
       moveDistance: 2.0,
       decayFactor: 0.85,
-      depositAmount: 6.0,
-      resolution: 0.35
+      depositAmount: 6.0
     }
   },
   {
@@ -340,8 +419,7 @@ const presets = [
       rotationAngle: 0.25,
       moveDistance: 1.2,
       decayFactor: 0.96,
-      depositAmount: 10.0,
-      resolution: 0.3
+      depositAmount: 10.0
     }
   },
   {
@@ -354,8 +432,7 @@ const presets = [
       rotationAngle: 0.5,
       moveDistance: 3.0,
       decayFactor: 0.9,
-      depositAmount: 2.0,
-      resolution: 0.5
+      depositAmount: 2.0
     }
   }
 ]
@@ -384,27 +461,134 @@ function loadPreset(preset) {
 function randomizeParams() {
   // Randomize all parameters within reasonable ranges
   Object.assign(params, {
-    numParticles: Math.floor(Math.random() * 75000) + 15000, // 15K - 90K
+    numParticles: Math.floor(Math.random() * 750000) + 150000, // 150K - 900K
     sensorDistance: Math.random() * 15 + 5, // 5 - 20
     sensorAngle: Math.random() * Math.PI * 0.8 + 0.1, // 0.1 - 2.6 radians
     rotationAngle: Math.random() * Math.PI * 0.4 + 0.1, // 0.1 - 1.3 radians
     moveDistance: Math.random() * 3 + 0.5, // 0.5 - 3.5
     decayFactor: Math.random() * 0.25 + 0.75, // 0.75 - 1.0
     depositAmount: Math.random() * 15 + 2, // 2 - 17
-    resolution: Math.random() * 0.6 + 0.2 // 0.2 - 0.8
   })
-  
-  // Force a simulation restart for particle count and resolution changes
-  setTimeout(() => {
-    resetSimulation()
-  }, 100)
+
+  // Randomize LFO parameters
+  Object.keys(lfoParams).forEach(paramName => {
+    const lfo = lfoParams[paramName]
+
+    // 50% chance to enable LFO for each parameter
+    if (Math.random() < 0.5) {
+      lfo.rate = Math.random() * 0.03 + 0.005 // 0.005 - 0.035 Hz (much slower)
+
+      // Parameter-specific amplitude ranges
+      switch (paramName) {
+        case 'sensorDistance':
+          lfo.amplitude = Math.random() * 3 + 0.5 // 0.5 - 3.5
+          break
+        case 'sensorAngle':
+          lfo.amplitude = Math.random() * 0.4 + 0.1 // 0.1 - 0.5
+          break
+        case 'rotationAngle':
+          lfo.amplitude = Math.random() * 0.2 + 0.05 // 0.05 - 0.25
+          break
+        case 'moveDistance':
+          lfo.amplitude = Math.random() * 1.0 + 0.2 // 0.2 - 1.2
+          break
+        case 'decayFactor':
+          lfo.amplitude = Math.random() * 0.08 + 0.02 // 0.02 - 0.1
+          break
+        case 'depositAmount':
+          lfo.amplitude = Math.random() * 4 + 1 // 1 - 5
+          break
+      }
+    } else {
+      // Disable LFO for this parameter
+      lfo.rate = 0
+      lfo.amplitude = 0
+    }
+  })
+
+  // Update base values for LFOs
+  updateAllBaseValues()
+}
+
+function toggleLFO() {
+  lfoEnabled.value = !lfoEnabled.value
+
+  if (!lfoEnabled.value) {
+    // When disabling LFOs, stop all oscillations by setting rates to 0
+    Object.keys(lfoParams).forEach(paramName => {
+      lfoParams[paramName].rate = 0
+    })
+  }
+}
+
+function updateBaseValue(paramName, value) {
+  if (lfoParams[paramName]) {
+    lfoParams[paramName].baseValue = value
+  }
+}
+
+function updateAllBaseValues() {
+  Object.keys(params).forEach(key => {
+    if (lfoParams[key]) {
+      lfoParams[key].baseValue = params[key]
+    }
+  })
+}
+
+// LFO Animation function
+function animateLFOs() {
+  const currentTime = (Date.now() - startTime) / 1000
+
+  // Only animate LFOs if globally enabled
+  if (lfoEnabled.value) {
+    Object.keys(lfoParams).forEach(paramName => {
+      const lfo = lfoParams[paramName]
+      if (lfo.rate > 0 && lfo.amplitude > 0) {
+        // Calculate oscillation
+        const oscillation = Math.sin(currentTime * lfo.rate * Math.PI * 2) * lfo.amplitude
+
+        // Apply to parameter with clamping to valid ranges
+        let newValue = lfo.baseValue + oscillation
+
+        // Clamp to parameter-specific ranges
+        switch (paramName) {
+          case 'sensorDistance':
+            newValue = Math.max(1, Math.min(20, newValue))
+            params[paramName] = Math.round(newValue * 10) / 10 // One decimal place
+            break
+          case 'sensorAngle':
+            newValue = Math.max(0, Math.min(Math.PI, newValue))
+            params[paramName] = Math.round(newValue * 100) / 100 // Two decimal places
+            break
+          case 'rotationAngle':
+            newValue = Math.max(0, Math.min(Math.PI / 2, newValue))
+            params[paramName] = Math.round(newValue * 100) / 100
+            break
+          case 'moveDistance':
+            newValue = Math.max(0.1, Math.min(5, newValue))
+            params[paramName] = Math.round(newValue * 10) / 10
+            break
+          case 'decayFactor':
+            newValue = Math.max(0.1, Math.min(1, newValue))
+            params[paramName] = Math.round(newValue * 100) / 100
+            break
+          case 'depositAmount':
+            newValue = Math.max(0.1, Math.min(20, newValue))
+            params[paramName] = Math.round(newValue * 10) / 10
+            break
+        }
+      }
+    })
+  }
+
+  animationId = requestAnimationFrame(animateLFOs)
 }
 
 // Mouse tracking functions
 function onMouseMove() {
   showNavbar.value = true
   clearTimeout(hideTimer)
-  
+
   // Don't hide if controls are open or mouse is over controls
   if (!showControls.value && !isMouseOverControls.value) {
     hideTimer = setTimeout(() => {
@@ -447,15 +631,21 @@ watch(showControls, (isOpen) => {
 // Lifecycle hooks
 onMounted(() => {
   document.addEventListener('mousemove', onMouseMove)
+  updateAllBaseValues() // Initialize base values
+  animateLFOs() // Start LFO animation
   // Start the initial hide timer
   hideTimer = setTimeout(() => {
     showNavbar.value = false
   }, 5000) // Show for 5 seconds initially
+  randomizeParams();
 })
 
 onUnmounted(() => {
   document.removeEventListener('mousemove', onMouseMove)
   clearTimeout(hideTimer)
+  if (animationId) {
+    cancelAnimationFrame(animationId)
+  }
 })
 
 // Watch for parameter changes and emit them
