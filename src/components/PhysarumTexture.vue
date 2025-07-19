@@ -6,48 +6,8 @@
       @mousedown="onMouseDown"
       @mousemove="onMouseMove"
       @mouseup="onMouseUp"
-      @touchstart="onTouchStart"
-      @touchmove="onTouchMove"
-      @touchend="onTouchEnd"
     ></canvas>
 
-    <!-- Touch point indicators -->
-    <div
-      v-for="(touch, index) in touchPoints"
-      :key="touch.id"
-      class="touch-indicator"
-      :style="{
-        left: (touch.x / width * 100) + '%',
-        top: (touch.y / height * 100) + '%',
-        animationDelay: (index * 0.1) + 's'
-      }"
-    >
-      <div class="touch-ripple"></div>
-      <div class="touch-label">{{ index + 1 }}</div>
-    </div>
-
-    <!-- Mouse indicator for desktop -->
-    <div
-      v-if="isMouseDown && touchPoints.length === 0"
-      class="touch-indicator mouse-indicator"
-      :style="{
-        left: (mousePos.x / width * 100) + '%',
-        top: (mousePos.y / height * 100) + '%'
-      }"
-    >
-      <div class="touch-ripple"></div>
-      <div class="touch-label">M</div>
-    </div>
-
-    <!-- Debug info -->
-    <div v-if="touchPoints.length > 0" class="debug-info">
-      Multi-touch: {{ touchPoints.length }} points active
-    </div>
-
-    <!-- Double tap feedback -->
-    <div v-if="showDoubleTapFeedback" class="double-tap-feedback">
-      Double tap detected!
-    </div>
   </div>
 </template>
 
@@ -95,7 +55,6 @@ let numParticles = 0
 let lastTapTime = 0
 let tapCount = 0
 const DOUBLE_TAP_DELAY = 300 // milliseconds
-const showDoubleTapFeedback = ref(false)
 
 const emit = defineEmits(['ready', 'double-tap'])
 
@@ -877,10 +836,6 @@ function onTouchStart(event) {
       tapCount++
       if (tapCount === 2) {
         // Double tap detected!
-        showDoubleTapFeedback.value = true
-        setTimeout(() => {
-          showDoubleTapFeedback.value = false
-        }, 1000)
         emit('double-tap')
         tapCount = 0
         lastTapTime = 0
@@ -1011,6 +966,11 @@ onMounted(() => {
     animationId = requestAnimationFrame(render)
   }
 
+  // Add touch event listeners with explicit passive: false since we call preventDefault()
+  canvas.value.addEventListener('touchstart', onTouchStart, { passive: false })
+  canvas.value.addEventListener('touchmove', onTouchMove, { passive: false })
+  canvas.value.addEventListener('touchend', onTouchEnd, { passive: false })
+
   window.addEventListener('resize', resizeCanvas)
 })
 
@@ -1018,6 +978,14 @@ onUnmounted(() => {
   if (animationId) {
     cancelAnimationFrame(animationId)
   }
+
+  // Remove touch event listeners
+  if (canvas.value) {
+    canvas.value.removeEventListener('touchstart', onTouchStart)
+    canvas.value.removeEventListener('touchmove', onTouchMove)
+    canvas.value.removeEventListener('touchend', onTouchEnd)
+  }
+
   window.removeEventListener('resize', resizeCanvas)
 })
 
@@ -1082,50 +1050,6 @@ defineExpose({
 .mouse-indicator .touch-ripple {
   border-color: rgba(0, 255, 255, 0.8);
   background: rgba(0, 255, 255, 0.1);
-}
-
-.debug-info {
-  position: fixed;
-  top: 120px;
-  left: 20px;
-  color: white;
-  background: rgba(0, 0, 0, 0.7);
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 14px;
-  z-index: 1001;
-  backdrop-filter: blur(10px);
-}
-
-.double-tap-feedback {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: white;
-  background: rgba(0, 255, 0, 0.8);
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: bold;
-  z-index: 1002;
-  backdrop-filter: blur(10px);
-  animation: doubleTapFade 1s ease-out;
-}
-
-@keyframes doubleTapFade {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.8);
-  }
-  20% {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1.1);
-  }
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(1);
-  }
 }
 
 @keyframes ripple {
