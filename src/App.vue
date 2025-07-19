@@ -1,7 +1,7 @@
 <template>
   <v-app>
     <!-- Physarum simulation takes up full screen -->
-    <PhysarumCanvas
+    <PhysarumTexture
       ref="simulation"
       :numParticles="simulationParams.numParticles"
       :sensorDistance="simulationParams.sensorDistance"
@@ -10,6 +10,7 @@
       :moveDistance="simulationParams.moveDistance"
       :decayFactor="simulationParams.decayFactor"
       :depositAmount="simulationParams.depositAmount"
+      :resolution="simulationParams.resolution"
       :isPlaying="isPlaying"
       @ready="onSimulationReady"
     />
@@ -40,7 +41,7 @@
 
 <script setup>
 import { ref, reactive } from 'vue'
-import PhysarumCanvas from './components/PhysarumCanvas.vue'
+import PhysarumTexture from './components/PhysarumTexture.vue'
 import ControlNavbar from './components/ControlNavbar.vue'
 
 const simulation = ref(null)
@@ -48,13 +49,14 @@ const isReady = ref(false)
 const isPlaying = ref(true)
 
 const simulationParams = reactive({
-  numParticles: 100000,
+  numParticles: 50000,
   sensorDistance: 9.0,
   sensorAngle: 0.5,
   rotationAngle: 0.3,
   moveDistance: 1.0,
-  decayFactor: 0.9,
-  depositAmount: 5.0
+  decayFactor: 0.95,
+  depositAmount: 5.0,
+  resolution: 0.3
 })
 
 function onSimulationReady() {

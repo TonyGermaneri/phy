@@ -59,9 +59,9 @@
               <label class="control-label">Particles: {{ formatNumber(params.numParticles) }}</label>
               <v-slider
                 v-model="params.numParticles"
-                :min="1000"
-                :max="500000"
-                :step="1000"
+                :min="5000"
+                :max="100000"
+                :step="5000"
                 color="blue"
                 track-color="grey-darken-1"
                 thumb-color="blue"
@@ -154,6 +154,40 @@
               />
             </div>
           </v-col>
+
+          <!-- Deposit Amount -->
+          <v-col cols="12" sm="6" md="4">
+            <div class="control-group">
+              <label class="control-label">Deposit Amount: {{ params.depositAmount.toFixed(1) }}</label>
+              <v-slider
+                v-model="params.depositAmount"
+                :min="0.1"
+                :max="20"
+                :step="0.1"
+                color="yellow"
+                track-color="grey-darken-1"
+                thumb-color="yellow"
+                hide-details
+              />
+            </div>
+          </v-col>
+
+          <!-- Resolution -->
+          <v-col cols="12" sm="6" md="4">
+            <div class="control-group">
+              <label class="control-label">Resolution: {{ (params.resolution * 100).toFixed(0) }}%</label>
+              <v-slider
+                v-model="params.resolution"
+                :min="0.1"
+                :max="1.0"
+                :step="0.05"
+                color="pink"
+                track-color="grey-darken-1"
+                thumb-color="pink"
+                hide-details
+              />
+            </div>
+          </v-col>
         </v-row>
 
         <!-- Presets -->
@@ -192,92 +226,99 @@ const emit = defineEmits(['update-params', 'toggle-play', 'reset'])
 const showControls = ref(false)
 
 const params = reactive({
-  numParticles: 100000,
+  numParticles: 50000,
   sensorDistance: 9.0,
   sensorAngle: 0.5,
   rotationAngle: 0.3,
   moveDistance: 1.0,
-  decayFactor: 0.9,
-  depositAmount: 5.0
+  decayFactor: 0.95,
+  depositAmount: 5.0,
+  resolution: 0.3
 })
 
 const presets = [
   {
-    name: 'Classic',
+    name: 'Default',
     color: 'blue',
     params: {
-      numParticles: 100000,
+      numParticles: 50000,
       sensorDistance: 9.0,
       sensorAngle: 0.5,
       rotationAngle: 0.3,
       moveDistance: 1.0,
-      decayFactor: 0.9,
-      depositAmount: 5.0
+      decayFactor: 0.95,
+      depositAmount: 5.0,
+      resolution: 0.3
     }
   },
   {
-    name: 'Branching',
+    name: 'Dense',
     color: 'green',
     params: {
-      numParticles: 150000,
-      sensorDistance: 15.0,
+      numParticles: 75000,
+      sensorDistance: 12.0,
       sensorAngle: 0.8,
-      rotationAngle: 0.5,
-      moveDistance: 1.5,
-      decayFactor: 0.85,
-      depositAmount: 8.0
+      rotationAngle: 0.4,
+      moveDistance: 0.8,
+      decayFactor: 0.92,
+      depositAmount: 8.0,
+      resolution: 0.25
     }
   },
   {
-    name: 'Spiral',
+    name: 'Wispy',
     color: 'purple',
     params: {
-      numParticles: 80000,
+      numParticles: 30000,
+      sensorDistance: 15.0,
+      sensorAngle: 0.3,
+      rotationAngle: 0.2,
+      moveDistance: 1.5,
+      decayFactor: 0.98,
+      depositAmount: 3.0,
+      resolution: 0.4
+    }
+  },
+  {
+    name: 'Chaos',
+    color: 'red',
+    params: {
+      numParticles: 40000,
       sensorDistance: 6.0,
       sensorAngle: 1.2,
       rotationAngle: 0.8,
       moveDistance: 2.0,
-      decayFactor: 0.95,
-      depositAmount: 3.0
+      decayFactor: 0.85,
+      depositAmount: 6.0,
+      resolution: 0.35
     }
   },
   {
-    name: 'Network',
+    name: 'Organic',
     color: 'orange',
     params: {
-      numParticles: 200000,
-      sensorDistance: 12.0,
-      sensorAngle: 0.3,
-      rotationAngle: 0.2,
-      moveDistance: 0.8,
-      decayFactor: 0.92,
-      depositAmount: 6.0
-    }
-  },
-  {
-    name: 'Explosive',
-    color: 'red',
-    params: {
-      numParticles: 120000,
-      sensorDistance: 20.0,
-      sensorAngle: 1.5,
-      rotationAngle: 1.0,
-      moveDistance: 3.0,
-      decayFactor: 0.8,
-      depositAmount: 10.0
-    }
-  },
-  {
-    name: 'Delicate',
-    color: 'cyan',
-    params: {
       numParticles: 60000,
-      sensorDistance: 4.0,
-      sensorAngle: 0.2,
-      rotationAngle: 0.1,
-      moveDistance: 0.5,
-      decayFactor: 0.98,
-      depositAmount: 2.0
+      sensorDistance: 18.0,
+      sensorAngle: 0.6,
+      rotationAngle: 0.25,
+      moveDistance: 1.2,
+      decayFactor: 0.96,
+      depositAmount: 10.0,
+      resolution: 0.3
+    }
+  },
+  {
+    name: 'Fast',
+    color: 'teal',
+    params: {
+      numParticles: 25000,
+      sensorDistance: 8.0,
+      sensorAngle: 0.4,
+      rotationAngle: 0.5,
+      moveDistance: 3.0,
+      decayFactor: 0.9,
+      depositAmount: 2.0,
+      resolution: 0.5
     }
   }
 ]
