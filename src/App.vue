@@ -10,6 +10,10 @@
       :moveDistance="simulationParams.moveDistance"
       :decayFactor="simulationParams.decayFactor"
       :depositAmount="simulationParams.depositAmount"
+      :diffusionStrength="simulationParams.diffusionStrength"
+      :blurRadius="simulationParams.blurRadius"
+      :trailFade="simulationParams.trailFade"
+      :edgeEnhancement="simulationParams.edgeEnhancement"
       :resolution="simulationParams.resolution"
       :colorRemap="simulationParams.colorRemap"
       :hueOffset="simulationParams.hueOffset"
@@ -67,6 +71,10 @@ const simulationParams = reactive({
   moveDistance: 1.0,
   decayFactor: 0.95,
   depositAmount: 5.0,
+  diffusionStrength: 0.3,
+  blurRadius: 1.5,
+  trailFade: 0.98,
+  edgeEnhancement: 0.1,
   resolution: 0.3,
   colorRemap: 0,
   hueOffset: 0.0,

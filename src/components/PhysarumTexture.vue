@@ -24,6 +24,10 @@ const props = defineProps({
   moveDistance: { type: Number, default: 1.0 },
   decayFactor: { type: Number, default: 0.95 },
   depositAmount: { type: Number, default: 5.0 },
+  diffusionStrength: { type: Number, default: 0.3 },
+  blurRadius: { type: Number, default: 1.5 },
+  trailFade: { type: Number, default: 0.98 },
+  edgeEnhancement: { type: Number, default: 0.1 },
   isPlaying: { type: Boolean, default: true },
   resolution: { type: Number, default: 0.3 },
   colorRemap: { type: Number, default: 0 },
@@ -262,7 +266,7 @@ void main() {
 }
 `
 
-// Trail diffusion and decay shader
+// Enhanced trail diffusion and decay shader
 const trailShader = `#version 300 es
 precision highp float;
 
@@ -271,6 +275,10 @@ uniform sampler2D u_particleTexture;
 uniform vec2 u_resolution;
 uniform float u_decayFactor;
 uniform float u_depositAmount;
+uniform float u_diffusionStrength;
+uniform float u_blurRadius;
+uniform float u_trailFade;
+uniform float u_edgeEnhancement;
 
 in vec2 v_texCoord;
 out vec4 fragColor;
@@ -278,28 +286,45 @@ out vec4 fragColor;
 void main() {
   vec2 texelSize = 1.0 / u_resolution;
 
-  // 3x3 diffusion
+  // Dynamic blur radius (1-3 pixels)
+  int radius = int(clamp(u_blurRadius, 1.0, 3.0));
+  float totalWeight = 0.0;
   float sum = 0.0;
 
-  for (int y = -1; y <= 1; y++) {
-    for (int x = -1; x <= 1; x++) {
+  // Variable size diffusion kernel
+  for (int y = -radius; y <= radius; y++) {
+    for (int x = -radius; x <= radius; x++) {
       vec2 offset = vec2(float(x), float(y)) * texelSize;
       vec2 samplePos = fract(v_texCoord + offset + 1.0);
 
-      float weight = 0.1;
-      if (x == 0 && y == 0) weight = 0.2;
-      else if (x == 0 || y == 0) weight = 0.125;
-      else weight = 0.05;
+      // Gaussian-like weights based on distance
+      float dist = length(vec2(float(x), float(y)));
+      float weight = exp(-dist * dist / (2.0 * u_blurRadius * u_blurRadius));
+
+      // Center sample gets special treatment for edge enhancement
+      if (x == 0 && y == 0) {
+        weight = weight + u_edgeEnhancement;
+      }
 
       sum += texture(u_trailTexture, samplePos).r * weight;
+      totalWeight += weight;
     }
   }
+
+  // Normalize the blur
+  if (totalWeight > 0.0) {
+    sum /= totalWeight;
+  }
+
+  // Mix original with blurred based on diffusion strength
+  float originalValue = texture(u_trailTexture, v_texCoord).r;
+  float diffusedValue = mix(originalValue, sum, u_diffusionStrength);
 
   // Add particle deposits
   float particleDeposit = texture(u_particleTexture, v_texCoord).r;
 
-  // Apply decay and add deposit
-  float newTrail = sum * u_decayFactor + particleDeposit * u_depositAmount;
+  // Apply decay, trail fade, and add deposit
+  float newTrail = diffusedValue * u_decayFactor * u_trailFade + particleDeposit * u_depositAmount;
 
   fragColor = vec4(newTrail, newTrail, newTrail, 1.0);
 }
@@ -775,6 +800,10 @@ function render(timestamp) {
   gl.uniform2f(gl.getUniformLocation(programs.trail, 'u_resolution'), width, height)
   gl.uniform1f(gl.getUniformLocation(programs.trail, 'u_decayFactor'), props.decayFactor)
   gl.uniform1f(gl.getUniformLocation(programs.trail, 'u_depositAmount'), props.depositAmount)
+  gl.uniform1f(gl.getUniformLocation(programs.trail, 'u_diffusionStrength'), props.diffusionStrength)
+  gl.uniform1f(gl.getUniformLocation(programs.trail, 'u_blurRadius'), props.blurRadius)
+  gl.uniform1f(gl.getUniformLocation(programs.trail, 'u_trailFade'), props.trailFade)
+  gl.uniform1f(gl.getUniformLocation(programs.trail, 'u_edgeEnhancement'), props.edgeEnhancement)
 
   gl.activeTexture(gl.TEXTURE0)
   gl.bindTexture(gl.TEXTURE_2D, textures.trail1)

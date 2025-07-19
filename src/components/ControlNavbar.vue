@@ -284,6 +284,122 @@
           </v-col>
         </v-row>
 
+        <!-- Advanced Trail Controls Section -->
+        <v-divider class="my-4" />
+
+        <div class="trail-section">
+          <h4 class="text-white mb-3">Advanced Trail Controls:</h4>
+          <v-row dense>
+            <!-- Diffusion Strength -->
+            <v-col cols="12" sm="6" md="4">
+              <div class="control-group">
+                <label class="control-label">Diffusion: {{ (params.diffusionStrength * 100).toFixed(0) }}%</label>
+                <v-slider
+                  v-model="params.diffusionStrength"
+                  :min="0"
+                  :max="1"
+                  :step="0.01"
+                  color="teal"
+                  track-color="grey-darken-1"
+                  thumb-color="teal"
+                  hide-details
+                  @update:model-value="updateBaseValue('diffusionStrength', $event)"
+                />
+                <!-- LFO Controls -->
+                <LfoControl
+                  v-model:rate="lfoParams.diffusionStrength.rate"
+                  v-model:amplitude="lfoParams.diffusionStrength.amplitude"
+                  :max-amplitude="1"
+                  :step="0.01"
+                  :disabled="!lfoEnabled"
+                  color="teal"
+                />
+              </div>
+            </v-col>
+
+            <!-- Blur Radius -->
+            <v-col cols="12" sm="6" md="4">
+              <div class="control-group">
+                <label class="control-label">Blur Radius: {{ params.blurRadius.toFixed(1) }}px</label>
+                <v-slider
+                  v-model="params.blurRadius"
+                  :min="1"
+                  :max="3"
+                  :step="0.1"
+                  color="indigo"
+                  track-color="grey-darken-1"
+                  thumb-color="indigo"
+                  hide-details
+                  @update:model-value="updateBaseValue('blurRadius', $event)"
+                />
+                <!-- LFO Controls -->
+                <LfoControl
+                  v-model:rate="lfoParams.blurRadius.rate"
+                  v-model:amplitude="lfoParams.blurRadius.amplitude"
+                  :max-amplitude="2"
+                  :step="0.1"
+                  :disabled="!lfoEnabled"
+                  color="indigo"
+                />
+              </div>
+            </v-col>
+
+            <!-- Trail Fade -->
+            <v-col cols="12" sm="6" md="4">
+              <div class="control-group">
+                <label class="control-label">Trail Fade: {{ (params.trailFade * 100).toFixed(1) }}%</label>
+                <v-slider
+                  v-model="params.trailFade"
+                  :min="0.8"
+                  :max="1"
+                  :step="0.001"
+                  color="purple"
+                  track-color="grey-darken-1"
+                  thumb-color="purple"
+                  hide-details
+                  @update:model-value="updateBaseValue('trailFade', $event)"
+                />
+                <!-- LFO Controls -->
+                <LfoControl
+                  v-model:rate="lfoParams.trailFade.rate"
+                  v-model:amplitude="lfoParams.trailFade.amplitude"
+                  :max-amplitude="0.2"
+                  :step="0.001"
+                  :disabled="!lfoEnabled"
+                  color="purple"
+                />
+              </div>
+            </v-col>
+
+            <!-- Edge Enhancement -->
+            <v-col cols="12" sm="6" md="4">
+              <div class="control-group">
+                <label class="control-label">Edge Enhance: {{ params.edgeEnhancement.toFixed(2) }}</label>
+                <v-slider
+                  v-model="params.edgeEnhancement"
+                  :min="-0.5"
+                  :max="1"
+                  :step="0.01"
+                  color="orange"
+                  track-color="grey-darken-1"
+                  thumb-color="orange"
+                  hide-details
+                  @update:model-value="updateBaseValue('edgeEnhancement', $event)"
+                />
+                <!-- LFO Controls -->
+                <LfoControl
+                  v-model:rate="lfoParams.edgeEnhancement.rate"
+                  v-model:amplitude="lfoParams.edgeEnhancement.amplitude"
+                  :max-amplitude="1.5"
+                  :step="0.01"
+                  :disabled="!lfoEnabled"
+                  color="orange"
+                />
+              </div>
+            </v-col>
+          </v-row>
+        </div>
+
         <!-- Color Remapping Section -->
         <v-divider class="my-4" />
 
@@ -556,6 +672,10 @@ const params = reactive({
   moveDistance: 1.0,
   decayFactor: 0.95,
   depositAmount: 5.0,
+  diffusionStrength: 0.3,
+  blurRadius: 1.5,
+  trailFade: 0.98,
+  edgeEnhancement: 0.1,
   resolution: 1.0,
   // Color parameters
   colorRemap: 0, // Index of selected color remap
@@ -577,6 +697,10 @@ const lfoParams = reactive({
   moveDistance: { rate: 0, amplitude: 0, baseValue: 1.0 },
   decayFactor: { rate: 0, amplitude: 0, baseValue: 0.95 },
   depositAmount: { rate: 0, amplitude: 0, baseValue: 5.0 },
+  diffusionStrength: { rate: 0, amplitude: 0, baseValue: 0.3 },
+  blurRadius: { rate: 0, amplitude: 0, baseValue: 1.5 },
+  trailFade: { rate: 0, amplitude: 0, baseValue: 0.98 },
+  edgeEnhancement: { rate: 0, amplitude: 0, baseValue: 0.1 },
   hueOffset: { rate: 0, amplitude: 0, baseValue: 0.0 },
   hueSpeed: { rate: 0, amplitude: 0, baseValue: 0.01 },
   saturation: { rate: 0, amplitude: 0, baseValue: 0.8 },
@@ -790,6 +914,11 @@ function randomizeParams() {
     moveDistance: Math.random() * 3 + 0.5, // 0.5 - 3.5
     decayFactor: Math.random() * 0.25 + 0.75, // 0.75 - 1.0
     depositAmount: Math.random() * 15 + 2, // 2 - 17
+    // Advanced trail parameters
+    diffusionStrength: Math.random() * 0.8 + 0.1, // 0.1 - 0.9
+    blurRadius: Math.random() * 2 + 1, // 1 - 3
+    trailFade: Math.random() * 0.15 + 0.85, // 0.85 - 1.0
+    edgeEnhancement: Math.random() * 1.2 - 0.3, // -0.3 - 0.9
     // Randomize color parameters
     colorRemap: Math.floor(Math.random() * colorRemaps.length),
     hueOffset: Math.random(),
