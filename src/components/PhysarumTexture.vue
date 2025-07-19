@@ -32,7 +32,9 @@ const props = defineProps({
   hueSpeed: { type: Number, default: 0.01 },
   saturation: { type: Number, default: 0.8 },
   brightness: { type: Number, default: 1.0 },
-  contrast: { type: Number, default: 1.0 }
+  contrast: { type: Number, default: 1.0 },
+  spawnRate: { type: Number, default: 5.0 },
+  spawnRadius: { type: Number, default: 30.0 }
 })
 
 let gl = null
@@ -79,6 +81,8 @@ uniform float u_rotationAngle;
 uniform float u_moveDistance;
 uniform vec2 u_mousePos;
 uniform float u_mouseInfluence;
+uniform float u_spawnRate;
+uniform float u_spawnRadius;
 
 in vec2 v_texCoord;
 out vec4 fragColor;
@@ -86,6 +90,11 @@ out vec4 fragColor;
 // Hash function for randomness
 float hash(vec2 p) {
   return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+// Enhanced hash function for particle spawning
+float hash3(vec3 p) {
+  return fract(sin(dot(p, vec3(12.9898, 78.233, 45.164))) * 43758.5453);
 }
 
 float sampleTrail(vec2 pos) {
@@ -130,7 +139,7 @@ void main() {
     angle -= u_rotationAngle;
   }
 
-  // Mouse interaction
+  // Mouse interaction for existing particles
   if (u_mouseInfluence > 0.0) {
     vec2 toMouse = u_mousePos - pos;
     float mouseDist = length(toMouse);
@@ -138,6 +147,23 @@ void main() {
       float mouseAngle = atan(toMouse.y, toMouse.x);
       float influence = u_mouseInfluence * (1.0 - mouseDist / 150.0);
       angle = mix(angle, mouseAngle, influence);
+    }
+
+    // Additional spawning effect: relocate particles that are far from mouse
+    if (u_spawnRate > 0.0 && mouseDist > 200.0) {
+      vec2 spawnCoord = v_texCoord * u_particleTexSize;
+      float spawnRandom = fract(sin(dot(spawnCoord + u_time * 0.1, vec2(12.9898, 78.233))) * 43758.5453);
+
+      // Very low probability to avoid removing too many particles
+      if (spawnRandom < u_spawnRate * 0.0005) {
+        // Teleport particle near mouse position
+        float offsetAngle = spawnRandom * 6.28318;
+        float offsetDist = spawnRandom * u_spawnRadius;
+
+        pos = u_mousePos + vec2(cos(offsetAngle), sin(offsetAngle)) * offsetDist;
+        angle = offsetAngle;
+        pos = clamp(pos, vec2(5.0), u_resolution - 5.0);
+      }
     }
   }
 
@@ -147,8 +173,9 @@ void main() {
   // Boundary wrapping
   pos = mod(pos + u_resolution, u_resolution);
 
-  // Output new particle state
-  fragColor = vec4(pos, angle, 0.0);
+  // Output new particle state (use w component to track if particle is alive)
+  float life = max(particleData.w, 0.8); // Keep particles alive
+  fragColor = vec4(pos, angle, life);
 }
 `
 
@@ -406,7 +433,7 @@ function initParticles() {
     particleData[idx] = width / 2 + Math.cos(angle) * radius       // x
     particleData[idx + 1] = height / 2 + Math.sin(angle) * radius  // y
     particleData[idx + 2] = angle                                   // angle
-    particleData[idx + 3] = 0                                      // unused
+    particleData[idx + 3] = 1.0                                    // life (1.0 = alive, 0.0 = dead/available for spawn)
   }
 
   // Create particle data textures (double buffered)
@@ -581,6 +608,8 @@ function render(timestamp) {
   gl.uniform1f(gl.getUniformLocation(programs.particleUpdate, 'u_moveDistance'), props.moveDistance)
   gl.uniform2f(gl.getUniformLocation(programs.particleUpdate, 'u_mousePos'), mousePos.x, mousePos.y)
   gl.uniform1f(gl.getUniformLocation(programs.particleUpdate, 'u_mouseInfluence'), isMouseDown ? 0.1 : 0.0)
+  gl.uniform1f(gl.getUniformLocation(programs.particleUpdate, 'u_spawnRate'), isMouseDown ? props.spawnRate : 0.0)
+  gl.uniform1f(gl.getUniformLocation(programs.particleUpdate, 'u_spawnRadius'), props.spawnRadius)
 
   gl.activeTexture(gl.TEXTURE0)
   gl.bindTexture(gl.TEXTURE_2D, inputParticleTexture)
@@ -752,8 +781,9 @@ function updateMousePos(event) {
   const rect = canvas.value.getBoundingClientRect()
   const pixelRatio = Math.min(window.devicePixelRatio || 1, 1.5)
 
-  mousePos.x = (event.clientX - rect.left) * pixelRatio
-  mousePos.y = height - (event.clientY - rect.top) * pixelRatio
+  // Convert mouse coordinates to canvas space (accounting for resolution scaling)
+  mousePos.x = ((event.clientX - rect.left) / rect.width) * width
+  mousePos.y = ((event.clientY - rect.top) / rect.height) * height // Remove the height - to fix Y inversion
 }
 
 watch(() => props.isPlaying, (isPlaying) => {

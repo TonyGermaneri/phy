@@ -17,6 +17,8 @@
       :saturation="simulationParams.saturation"
       :brightness="simulationParams.brightness"
       :contrast="simulationParams.contrast"
+      :spawnRate="simulationParams.spawnRate"
+      :spawnRadius="simulationParams.spawnRadius"
       :isPlaying="isPlaying"
       @ready="onSimulationReady"
     />
@@ -68,7 +70,11 @@ const simulationParams = reactive({
   hueSpeed: 0.01,
   saturation: 0.8,
   brightness: 1.0,
-  contrast: 1.0
+  contrast: 1.0,
+  spawnRate: 5.0,
+  spawnRadius: 30.0,
+  spawnRate: 5.0,
+  spawnRadius: 30.0
 })
 
 function onSimulationReady() {

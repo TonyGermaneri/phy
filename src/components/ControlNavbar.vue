@@ -405,7 +405,7 @@
               <label class="control-label">Brightness: {{ (params.brightness * 100).toFixed(0) }}%</label>
               <v-slider
                 v-model="params.brightness"
-                :min="0.1"
+                :min="0.01"
                 :max="2"
                 :step="0.01"
                 color="amber"
@@ -453,6 +453,68 @@
             </div>
           </v-col>
         </v-row>
+
+        <!-- Mouse Spawning Section -->
+        <v-divider class="my-4" />
+
+        <div class="spawn-section">
+          <h4 class="text-white mb-3">Mouse Spawning:</h4>
+          <v-row dense>
+            <!-- Spawn Rate -->
+            <v-col cols="12" sm="6" md="4">
+              <div class="control-group">
+                <label class="control-label">Spawn Rate: {{ params.spawnRate.toFixed(1) }}/sec</label>
+                <v-slider
+                  v-model="params.spawnRate"
+                  :min="0"
+                  :max="20"
+                  :step="0.1"
+                  color="lime"
+                  track-color="grey-darken-1"
+                  thumb-color="lime"
+                  hide-details
+                  @update:model-value="updateBaseValue('spawnRate', $event)"
+                />
+                <!-- LFO Controls -->
+                <LfoControl
+                  v-model:rate="lfoParams.spawnRate.rate"
+                  v-model:amplitude="lfoParams.spawnRate.amplitude"
+                  :max-amplitude="15"
+                  :step="0.5"
+                  :disabled="!lfoEnabled"
+                  color="lime"
+                />
+              </div>
+            </v-col>
+
+            <!-- Spawn Radius -->
+            <v-col cols="12" sm="6" md="4">
+              <div class="control-group">
+                <label class="control-label">Spawn Radius: {{ params.spawnRadius.toFixed(0) }}px</label>
+                <v-slider
+                  v-model="params.spawnRadius"
+                  :min="5"
+                  :max="100"
+                  :step="1"
+                  color="lime-lighten-1"
+                  track-color="grey-darken-1"
+                  thumb-color="lime-lighten-1"
+                  hide-details
+                  @update:model-value="updateBaseValue('spawnRadius', $event)"
+                />
+                <!-- LFO Controls -->
+                <LfoControl
+                  v-model:rate="lfoParams.spawnRadius.rate"
+                  v-model:amplitude="lfoParams.spawnRadius.amplitude"
+                  :max-amplitude="50"
+                  :step="2"
+                  :disabled="!lfoEnabled"
+                  color="lime-lighten-1"
+                />
+              </div>
+            </v-col>
+          </v-row>
+        </div>
 
         <!-- Presets -->
         <v-divider class="my-4" />
@@ -508,8 +570,11 @@ const params = reactive({
   hueOffset: 0.0,
   hueSpeed: 0.01,
   saturation: 0.8,
-  brightness: 1.0,
-  contrast: 1.0
+  brightness: 0.1,
+  contrast: 1.0,
+  // Mouse spawning parameters
+  spawnRate: 5.0,
+  spawnRadius: 30.0
 })
 
 // LFO parameters for each control (removed numParticles)
@@ -524,7 +589,9 @@ const lfoParams = reactive({
   hueSpeed: { rate: 0, amplitude: 0, baseValue: 0.01 },
   saturation: { rate: 0, amplitude: 0, baseValue: 0.8 },
   brightness: { rate: 0, amplitude: 0, baseValue: 1.0 },
-  contrast: { rate: 0, amplitude: 0, baseValue: 1.0 }
+  contrast: { rate: 0, amplitude: 0, baseValue: 1.0 },
+  spawnRate: { rate: 0, amplitude: 0, baseValue: 5.0 },
+  spawnRadius: { rate: 0, amplitude: 0, baseValue: 30.0 }
 })
 
 let animationId = null
@@ -585,8 +652,10 @@ const presets = [
       hueOffset: 0.0,
       hueSpeed: 0.02,
       saturation: 0.9,
-      brightness: 1.0,
-      contrast: 1.0
+      brightness: 0.1,
+      contrast: 1.0,
+      spawnRate: 5.0,
+      spawnRadius: 30.0
     }
   },
   {
@@ -604,8 +673,10 @@ const presets = [
       hueOffset: 0.0,
       hueSpeed: 0.005,
       saturation: 0.8,
-      brightness: 0.9,
-      contrast: 1.2
+      brightness: 0.1,
+      contrast: 1.2,
+      spawnRate: 8.0,
+      spawnRadius: 25.0
     }
   },
   {
@@ -623,8 +694,10 @@ const presets = [
       hueOffset: 0.0,
       hueSpeed: 0.008,
       saturation: 0.85,
-      brightness: 0.95,
-      contrast: 1.15
+      brightness: 0.1,
+      contrast: 1.15,
+      spawnRate: 3.0,
+      spawnRadius: 50.0
     }
   },
   {
@@ -642,8 +715,10 @@ const presets = [
       hueOffset: 0.0,
       hueSpeed: 0.01,
       saturation: 1.0,
-      brightness: 1.1,
-      contrast: 1.3
+      brightness: 0.1,
+      contrast: 1.3,
+      spawnRate: 12.0,
+      spawnRadius: 20.0
     }
   },
   {
@@ -661,8 +736,10 @@ const presets = [
       hueOffset: 0.0,
       hueSpeed: 0.006,
       saturation: 0.9,
-      brightness: 1.05,
-      contrast: 1.2
+      brightness: 0.1,
+      contrast: 1.2,
+      spawnRate: 6.0,
+      spawnRadius: 40.0
     }
   },
   {
@@ -680,8 +757,10 @@ const presets = [
       hueOffset: 0.0,
       hueSpeed: 0.015,
       saturation: 1.0,
-      brightness: 1.2,
-      contrast: 1.4
+      brightness: 0.1,
+      contrast: 1.4,
+      spawnRate: 15.0,
+      spawnRadius: 15.0
     }
   }
 ]
@@ -724,8 +803,11 @@ function randomizeParams() {
     hueOffset: Math.random(),
     hueSpeed: Math.random() * 0.05,
     saturation: Math.random() * 0.5 + 0.5, // 0.5 - 1.0
-    brightness: Math.random() * 0.5 + 0.8, // 0.8 - 1.3
-    contrast: Math.random() * 0.8 + 0.8 // 0.8 - 1.6
+    brightness: Math.random() * 0.3 + 0.1, // 0.8 - 1.3
+    contrast: Math.random() * 0.8 + 0.8, // 0.8 - 1.6
+    // Randomize spawning parameters
+    spawnRate: Math.random() * 15 + 2, // 2 - 17
+    spawnRadius: Math.random() * 70 + 10 // 10 - 80
   })
 
   // Randomize LFO parameters
@@ -773,6 +855,12 @@ function randomizeParams() {
           break
         case 'contrast':
           lfo.amplitude = Math.random() * 0.3 + 0.05 // 0.05 - 0.35
+          break
+        case 'spawnRate':
+          lfo.amplitude = Math.random() * 8 + 1 // 1 - 9
+          break
+        case 'spawnRadius':
+          lfo.amplitude = Math.random() * 30 + 5 // 5 - 35
           break
       }
     } else {
@@ -871,6 +959,14 @@ function animateLFOs() {
           case 'contrast':
             newValue = Math.max(0.1, Math.min(3, newValue))
             params[paramName] = Math.round(newValue * 100) / 100
+            break
+          case 'spawnRate':
+            newValue = Math.max(0, Math.min(20, newValue))
+            params[paramName] = Math.round(newValue * 10) / 10
+            break
+          case 'spawnRadius':
+            newValue = Math.max(5, Math.min(100, newValue))
+            params[paramName] = Math.round(newValue)
             break
         }
       }
