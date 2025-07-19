@@ -19,16 +19,8 @@
     @mouseenter="onMouseEnterControls"
     @mouseleave="onMouseLeaveControls"
   >
-    <template #prepend>
-      <v-btn
-        icon="mdi-dna"
-        variant="text"
-        color="white"
-      />
-    </template>
-
     <v-app-bar-title class="text-white font-weight-bold">
-      Physarum Simulation
+      Physarum
     </v-app-bar-title>
 
     <v-spacer />
