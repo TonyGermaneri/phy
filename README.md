@@ -1,4 +1,3 @@
-GLSL Physarum Simulation
+# GLSL Physarum Simulation
 
 https://tonygermaneri.github.io/phy/
-

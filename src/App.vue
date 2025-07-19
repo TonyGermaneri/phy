@@ -11,6 +11,12 @@
       :decayFactor="simulationParams.decayFactor"
       :depositAmount="simulationParams.depositAmount"
       :resolution="simulationParams.resolution"
+      :colorRemap="simulationParams.colorRemap"
+      :hueOffset="simulationParams.hueOffset"
+      :hueSpeed="simulationParams.hueSpeed"
+      :saturation="simulationParams.saturation"
+      :brightness="simulationParams.brightness"
+      :contrast="simulationParams.contrast"
       :isPlaying="isPlaying"
       @ready="onSimulationReady"
     />
@@ -56,7 +62,13 @@ const simulationParams = reactive({
   moveDistance: 1.0,
   decayFactor: 0.95,
   depositAmount: 5.0,
-  resolution: 0.3
+  resolution: 0.3,
+  colorRemap: 0,
+  hueOffset: 0.0,
+  hueSpeed: 0.01,
+  saturation: 0.8,
+  brightness: 1.0,
+  contrast: 1.0
 })
 
 function onSimulationReady() {

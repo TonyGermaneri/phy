@@ -23,7 +23,13 @@ const props = defineProps({
   moveDistance: { type: Number, default: 1.0 },
   decayFactor: { type: Number, default: 0.9 },
   depositAmount: { type: Number, default: 5.0 },
-  isPlaying: { type: Boolean, default: true }
+  isPlaying: { type: Boolean, default: true },
+  colorRemap: { type: Number, default: 0 },
+  hueOffset: { type: Number, default: 0.0 },
+  hueSpeed: { type: Number, default: 0.01 },
+  saturation: { type: Number, default: 0.8 },
+  brightness: { type: Number, default: 1.0 },
+  contrast: { type: Number, default: 1.0 }
 })
 
 let gl = null
@@ -242,6 +248,12 @@ uniform sampler2D u_trailTexture;
 uniform sampler2D u_particleTexture;
 uniform vec2 u_resolution;
 uniform float u_time;
+uniform int u_colorRemap;
+uniform float u_hueOffset;
+uniform float u_hueSpeed;
+uniform float u_saturation;
+uniform float u_brightness;
+uniform float u_contrast;
 
 in vec2 v_texCoord;
 out vec4 fragColor;
@@ -250,6 +262,34 @@ vec3 hsv2rgb(vec3 c) {
   vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
   vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
   return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
+
+// Color remapping function - maps 0-1 hue input to different color gradients
+float remapHue(float hue, int remapIndex) {
+  float t = fract(hue);
+
+  if (remapIndex == 0) {
+    return t; // Rainbow (default)
+  } else if (remapIndex == 1) {
+    return t * 0.167; // Fire: Red → Orange → Yellow
+  } else if (remapIndex == 2) {
+    return 0.583 - t * 0.167; // Ocean: Deep Blue → Cyan → Blue-Green
+  } else if (remapIndex == 3) {
+    return 0.333 - t * 0.125; // Forest: Dark Green → Lime → Yellow-Green
+  } else if (remapIndex == 4) {
+    return 0.75 + t * 0.167; // Purple Dream: Deep Purple → Magenta → Pink
+  } else if (remapIndex == 5) {
+    // Sunset: Orange → Pink → Purple
+    if (t < 0.5) {
+      return 0.083 - t * 0.166;
+    } else {
+      return 0.917 - (t - 0.5) * 0.222;
+    }
+  } else if (remapIndex == 6) {
+    return 0.667 - t * 0.111; // Ice: Blue → Cyan → White-Blue
+  }
+
+  return t; // Fallback
 }
 
 void main() {
@@ -267,16 +307,23 @@ void main() {
     return;
   }
 
+  // Apply contrast
+  intensity = pow(intensity, 1.0 / max(u_contrast, 0.1));
+
   // Color mapping with dynamic hue
-  float hue = fract(
+  float baseHue = fract(
+    u_hueOffset +
     intensity * 1.5 +
     v_texCoord.x * 0.05 +
     v_texCoord.y * 0.03 +
-    u_time * 0.02
+    u_time * u_hueSpeed
   );
 
-  float saturation = 0.7 + intensity * 0.3;
-  float brightness = min(intensity * 2.0, 1.0);
+  // Apply color remapping
+  float remappedHue = remapHue(baseHue, u_colorRemap);
+
+  float saturation = u_saturation * (0.7 + intensity * 0.3);
+  float brightness = u_brightness * min(intensity * 2.0, 1.0);
 
   // Add some bloom for high intensity areas
   if (intensity > 0.8) {
@@ -284,11 +331,11 @@ void main() {
     saturation = min(saturation + (intensity - 0.8), 1.0);
   }
 
-  vec3 color = hsv2rgb(vec3(hue, saturation, brightness));
+  vec3 color = hsv2rgb(vec3(remappedHue, saturation, brightness));
 
   // Add particles as bright spots
   if (particles > 0.1) {
-    color = mix(color, vec3(1.0), particles * 0.3);
+    color = mix(color, vec3(u_brightness), particles * 0.3);
   }
 
   fragColor = vec4(color, 1.0);
@@ -543,6 +590,12 @@ function render(currentTime) {
 
   gl.uniform2f(gl.getUniformLocation(programs.display, 'u_resolution'), width, height)
   gl.uniform1f(gl.getUniformLocation(programs.display, 'u_time'), time)
+  gl.uniform1i(gl.getUniformLocation(programs.display, 'u_colorRemap'), props.colorRemap)
+  gl.uniform1f(gl.getUniformLocation(programs.display, 'u_hueOffset'), props.hueOffset)
+  gl.uniform1f(gl.getUniformLocation(programs.display, 'u_hueSpeed'), props.hueSpeed)
+  gl.uniform1f(gl.getUniformLocation(programs.display, 'u_saturation'), props.saturation)
+  gl.uniform1f(gl.getUniformLocation(programs.display, 'u_brightness'), props.brightness)
+  gl.uniform1f(gl.getUniformLocation(programs.display, 'u_contrast'), props.contrast)
 
   gl.activeTexture(gl.TEXTURE0)
   gl.bindTexture(gl.TEXTURE_2D, textures.trail1)

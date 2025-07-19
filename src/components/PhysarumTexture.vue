@@ -26,7 +26,13 @@ const props = defineProps({
   decayFactor: { type: Number, default: 0.95 },
   depositAmount: { type: Number, default: 5.0 },
   isPlaying: { type: Boolean, default: true },
-  resolution: { type: Number, default: 0.3 }
+  resolution: { type: Number, default: 0.3 },
+  colorRemap: { type: Number, default: 0 },
+  hueOffset: { type: Number, default: 0.0 },
+  hueSpeed: { type: Number, default: 0.01 },
+  saturation: { type: Number, default: 0.8 },
+  brightness: { type: Number, default: 1.0 },
+  contrast: { type: Number, default: 1.0 }
 })
 
 let gl = null
@@ -241,6 +247,12 @@ precision highp float;
 
 uniform sampler2D u_trailTexture;
 uniform float u_time;
+uniform int u_colorRemap;
+uniform float u_hueOffset;
+uniform float u_hueSpeed;
+uniform float u_saturation;
+uniform float u_brightness;
+uniform float u_contrast;
 
 in vec2 v_texCoord;
 out vec4 fragColor;
@@ -249,6 +261,40 @@ vec3 hsv2rgb(vec3 c) {
   vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
   vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
   return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
+
+// Color remapping function - maps 0-1 hue input to different color gradients
+float remapHue(float hue, int remapIndex) {
+  float t = fract(hue); // Ensure 0-1 range
+
+  if (remapIndex == 0) {
+    // Rainbow (default) - no remapping
+    return t;
+  } else if (remapIndex == 1) {
+    // Fire: Red → Orange → Yellow (0° → 30° → 60°)
+    return t * 0.167; // Map to 0-60 degrees / 360 = 0-0.167
+  } else if (remapIndex == 2) {
+    // Ocean: Deep Blue → Cyan → Blue-Green (210° → 180° → 150°)
+    return 0.583 - t * 0.167; // 210°/360° down to 150°/360°
+  } else if (remapIndex == 3) {
+    // Forest: Dark Green → Lime → Yellow-Green (120° → 90° → 75°)
+    return 0.333 - t * 0.125; // 120°/360° down to 75°/360°
+  } else if (remapIndex == 4) {
+    // Purple Dream: Deep Purple → Magenta → Pink (270° → 300° → 330°)
+    return 0.75 + t * 0.167; // 270°/360° to 330°/360°
+  } else if (remapIndex == 5) {
+    // Sunset: Orange → Pink → Purple (30° → 330° → 270°)
+    if (t < 0.5) {
+      return 0.083 - t * 0.166; // Orange to magenta-pink
+    } else {
+      return 0.917 - (t - 0.5) * 0.222; // Pink to purple
+    }
+  } else if (remapIndex == 6) {
+    // Ice: Blue → Cyan → White-Blue (240° → 180° → 200°)
+    return 0.667 - t * 0.111; // 240°/360° to 200°/360°
+  }
+
+  return t; // Fallback to rainbow
 }
 
 void main() {
@@ -261,21 +307,28 @@ void main() {
     return;
   }
 
-  float hue = fract(
+  // Apply contrast
+  intensity = pow(intensity, 1.0 / max(u_contrast, 0.1));
+
+  float baseHue = fract(
+    u_hueOffset +
     intensity * 1.2 +
     v_texCoord.x * 0.02 +
     v_texCoord.y * 0.01 +
-    u_time * 0.01
+    u_time * u_hueSpeed
   );
 
-  float saturation = mix(0.6, 1.0, min(intensity * 2.0, 1.0));
-  float brightness = min(intensity * 1.5, 1.0);
+  // Apply color remapping
+  float remappedHue = remapHue(baseHue, u_colorRemap);
+
+  float saturation = u_saturation * mix(0.6, 1.0, min(intensity * 2.0, 1.0));
+  float brightness = u_brightness * min(intensity * 1.5, 1.0);
 
   if (intensity > 0.7) {
-    brightness = mix(brightness, 1.2, (intensity - 0.7) * 3.33);
+    brightness = mix(brightness, u_brightness * 1.2, (intensity - 0.7) * 3.33);
   }
 
-  vec3 color = hsv2rgb(vec3(hue, saturation, brightness));
+  vec3 color = hsv2rgb(vec3(remappedHue, saturation, brightness));
   fragColor = vec4(color, 1.0);
 }
 `
@@ -598,6 +651,12 @@ function render(timestamp) {
   gl.viewport(0, 0, width, height)
 
   gl.uniform1f(gl.getUniformLocation(programs.display, 'u_time'), time)
+  gl.uniform1i(gl.getUniformLocation(programs.display, 'u_colorRemap'), props.colorRemap)
+  gl.uniform1f(gl.getUniformLocation(programs.display, 'u_hueOffset'), props.hueOffset)
+  gl.uniform1f(gl.getUniformLocation(programs.display, 'u_hueSpeed'), props.hueSpeed)
+  gl.uniform1f(gl.getUniformLocation(programs.display, 'u_saturation'), props.saturation)
+  gl.uniform1f(gl.getUniformLocation(programs.display, 'u_brightness'), props.brightness)
+  gl.uniform1f(gl.getUniformLocation(programs.display, 'u_contrast'), props.contrast)
 
   gl.activeTexture(gl.TEXTURE0)
   gl.bindTexture(gl.TEXTURE_2D, textures.trail1)

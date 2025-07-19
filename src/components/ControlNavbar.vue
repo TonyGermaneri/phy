@@ -292,6 +292,168 @@
           </v-col>
         </v-row>
 
+        <!-- Color Remapping Section -->
+        <v-divider class="my-4" />
+
+        <div class="color-section">
+          <h4 class="text-white mb-3">Color Remapping:</h4>
+          <v-row dense class="mb-4">
+            <v-col cols="12">
+              <label class="control-label">{{ colorRemaps[params.colorRemap].name }}: {{ colorRemaps[params.colorRemap].description }}</label>
+              <v-slider
+                v-model="params.colorRemap"
+                :min="0"
+                :max="colorRemaps.length - 1"
+                :step="1"
+                :color="colorRemaps[params.colorRemap].color"
+                track-color="grey-darken-1"
+                :thumb-color="colorRemaps[params.colorRemap].color"
+                hide-details
+                show-ticks="always"
+                tick-size="4"
+              />
+            </v-col>
+          </v-row>
+        </div>
+
+        <!-- Color Parameter Controls -->
+        <v-row dense>
+          <!-- Hue Offset -->
+          <v-col cols="12" sm="6" md="4">
+            <div class="control-group">
+              <label class="control-label">Hue Offset: {{ (params.hueOffset * 360).toFixed(0) }}°</label>
+              <v-slider
+                v-model="params.hueOffset"
+                :min="0"
+                :max="1"
+                :step="0.01"
+                color="rainbow"
+                track-color="grey-darken-1"
+                thumb-color="rainbow"
+                hide-details
+                @update:model-value="updateBaseValue('hueOffset', $event)"
+              />
+              <!-- LFO Controls -->
+              <LfoControl
+                v-model:rate="lfoParams.hueOffset.rate"
+                v-model:amplitude="lfoParams.hueOffset.amplitude"
+                :max-amplitude="1"
+                :step="0.02"
+                :disabled="!lfoEnabled"
+                color="rainbow"
+              />
+            </div>
+          </v-col>
+
+          <!-- Hue Speed -->
+          <v-col cols="12" sm="6" md="4">
+            <div class="control-group">
+              <label class="control-label">Hue Speed: {{ (params.hueSpeed * 1000).toFixed(1) }}</label>
+              <v-slider
+                v-model="params.hueSpeed"
+                :min="0"
+                :max="0.1"
+                :step="0.001"
+                color="deep-purple"
+                track-color="grey-darken-1"
+                thumb-color="deep-purple"
+                hide-details
+                @update:model-value="updateBaseValue('hueSpeed', $event)"
+              />
+              <!-- LFO Controls -->
+              <LfoControl
+                v-model:rate="lfoParams.hueSpeed.rate"
+                v-model:amplitude="lfoParams.hueSpeed.amplitude"
+                :max-amplitude="0.05"
+                :step="0.001"
+                :disabled="!lfoEnabled"
+                color="deep-purple"
+              />
+            </div>
+          </v-col>
+
+          <!-- Saturation -->
+          <v-col cols="12" sm="6" md="4">
+            <div class="control-group">
+              <label class="control-label">Saturation: {{ (params.saturation * 100).toFixed(0) }}%</label>
+              <v-slider
+                v-model="params.saturation"
+                :min="0"
+                :max="1"
+                :step="0.01"
+                color="teal"
+                track-color="grey-darken-1"
+                thumb-color="teal"
+                hide-details
+                @update:model-value="updateBaseValue('saturation', $event)"
+              />
+              <!-- LFO Controls -->
+              <LfoControl
+                v-model:rate="lfoParams.saturation.rate"
+                v-model:amplitude="lfoParams.saturation.amplitude"
+                :max-amplitude="1"
+                :step="0.02"
+                :disabled="!lfoEnabled"
+                color="teal"
+              />
+            </div>
+          </v-col>
+
+          <!-- Brightness -->
+          <v-col cols="12" sm="6" md="4">
+            <div class="control-group">
+              <label class="control-label">Brightness: {{ (params.brightness * 100).toFixed(0) }}%</label>
+              <v-slider
+                v-model="params.brightness"
+                :min="0.1"
+                :max="2"
+                :step="0.01"
+                color="amber"
+                track-color="grey-darken-1"
+                thumb-color="amber"
+                hide-details
+                @update:model-value="updateBaseValue('brightness', $event)"
+              />
+              <!-- LFO Controls -->
+              <LfoControl
+                v-model:rate="lfoParams.brightness.rate"
+                v-model:amplitude="lfoParams.brightness.amplitude"
+                :max-amplitude="1"
+                :step="0.02"
+                :disabled="!lfoEnabled"
+                color="amber"
+              />
+            </div>
+          </v-col>
+
+          <!-- Contrast -->
+          <v-col cols="12" sm="6" md="4">
+            <div class="control-group">
+              <label class="control-label">Contrast: {{ (params.contrast * 100).toFixed(0) }}%</label>
+              <v-slider
+                v-model="params.contrast"
+                :min="0.1"
+                :max="3"
+                :step="0.01"
+                color="indigo"
+                track-color="grey-darken-1"
+                thumb-color="indigo"
+                hide-details
+                @update:model-value="updateBaseValue('contrast', $event)"
+              />
+              <!-- LFO Controls -->
+              <LfoControl
+                v-model:rate="lfoParams.contrast.rate"
+                v-model:amplitude="lfoParams.contrast.amplitude"
+                :max-amplitude="2"
+                :step="0.02"
+                :disabled="!lfoEnabled"
+                color="indigo"
+              />
+            </div>
+          </v-col>
+        </v-row>
+
         <!-- Presets -->
         <v-divider class="my-4" />
 
@@ -340,7 +502,14 @@ const params = reactive({
   moveDistance: 1.0,
   decayFactor: 0.95,
   depositAmount: 5.0,
-  resolution: 1.0
+  resolution: 1.0,
+  // Color parameters
+  colorRemap: 0, // Index of selected color remap
+  hueOffset: 0.0,
+  hueSpeed: 0.01,
+  saturation: 0.8,
+  brightness: 1.0,
+  contrast: 1.0
 })
 
 // LFO parameters for each control (removed numParticles)
@@ -350,11 +519,55 @@ const lfoParams = reactive({
   rotationAngle: { rate: 0, amplitude: 0, baseValue: 0.3 },
   moveDistance: { rate: 0, amplitude: 0, baseValue: 1.0 },
   decayFactor: { rate: 0, amplitude: 0, baseValue: 0.95 },
-  depositAmount: { rate: 0, amplitude: 0, baseValue: 5.0 }
+  depositAmount: { rate: 0, amplitude: 0, baseValue: 5.0 },
+  hueOffset: { rate: 0, amplitude: 0, baseValue: 0.0 },
+  hueSpeed: { rate: 0, amplitude: 0, baseValue: 0.01 },
+  saturation: { rate: 0, amplitude: 0, baseValue: 0.8 },
+  brightness: { rate: 0, amplitude: 0, baseValue: 1.0 },
+  contrast: { rate: 0, amplitude: 0, baseValue: 1.0 }
 })
 
 let animationId = null
 let startTime = Date.now()
+
+// Color remapping definitions - maps the 360° hue wheel to custom gradients
+const colorRemaps = [
+  {
+    name: 'Rainbow',
+    description: 'Full spectrum (default)',
+    color: 'rainbow'
+  },
+  {
+    name: 'Fire',
+    description: 'Red → Orange → Yellow',
+    color: 'red'
+  },
+  {
+    name: 'Ocean',
+    description: 'Deep Blue → Cyan → Blue-Green',
+    color: 'blue'
+  },
+  {
+    name: 'Forest',
+    description: 'Dark Green → Lime → Yellow-Green',
+    color: 'green'
+  },
+  {
+    name: 'Purple Dream',
+    description: 'Deep Purple → Magenta → Pink',
+    color: 'purple'
+  },
+  {
+    name: 'Sunset',
+    description: 'Orange → Pink → Purple',
+    color: 'orange'
+  },
+  {
+    name: 'Ice',
+    description: 'Blue → Cyan → White',
+    color: 'light-blue'
+  }
+]
 
 const presets = [
   {
@@ -367,7 +580,13 @@ const presets = [
       rotationAngle: 0.3,
       moveDistance: 1.0,
       decayFactor: 0.95,
-      depositAmount: 5.0
+      depositAmount: 5.0,
+      colorRemap: 0, // Rainbow
+      hueOffset: 0.0,
+      hueSpeed: 0.02,
+      saturation: 0.9,
+      brightness: 1.0,
+      contrast: 1.0
     }
   },
   {
@@ -380,7 +599,13 @@ const presets = [
       rotationAngle: 0.4,
       moveDistance: 0.8,
       decayFactor: 0.92,
-      depositAmount: 8.0
+      depositAmount: 8.0,
+      colorRemap: 3, // Forest
+      hueOffset: 0.0,
+      hueSpeed: 0.005,
+      saturation: 0.8,
+      brightness: 0.9,
+      contrast: 1.2
     }
   },
   {
@@ -393,7 +618,13 @@ const presets = [
       rotationAngle: 0.2,
       moveDistance: 1.5,
       decayFactor: 0.98,
-      depositAmount: 3.0
+      depositAmount: 3.0,
+      colorRemap: 4, // Purple Dream
+      hueOffset: 0.0,
+      hueSpeed: 0.008,
+      saturation: 0.85,
+      brightness: 0.95,
+      contrast: 1.15
     }
   },
   {
@@ -406,7 +637,13 @@ const presets = [
       rotationAngle: 0.8,
       moveDistance: 2.0,
       decayFactor: 0.85,
-      depositAmount: 6.0
+      depositAmount: 6.0,
+      colorRemap: 1, // Fire
+      hueOffset: 0.0,
+      hueSpeed: 0.01,
+      saturation: 1.0,
+      brightness: 1.1,
+      contrast: 1.3
     }
   },
   {
@@ -419,7 +656,13 @@ const presets = [
       rotationAngle: 0.25,
       moveDistance: 1.2,
       decayFactor: 0.96,
-      depositAmount: 10.0
+      depositAmount: 10.0,
+      colorRemap: 5, // Sunset
+      hueOffset: 0.0,
+      hueSpeed: 0.006,
+      saturation: 0.9,
+      brightness: 1.05,
+      contrast: 1.2
     }
   },
   {
@@ -432,7 +675,13 @@ const presets = [
       rotationAngle: 0.5,
       moveDistance: 3.0,
       decayFactor: 0.9,
-      depositAmount: 2.0
+      depositAmount: 2.0,
+      colorRemap: 2, // Ocean
+      hueOffset: 0.0,
+      hueSpeed: 0.015,
+      saturation: 1.0,
+      brightness: 1.2,
+      contrast: 1.4
     }
   }
 ]
@@ -456,6 +705,8 @@ function resetSimulation() {
 
 function loadPreset(preset) {
   Object.assign(params, preset.params)
+  // Update base values for LFOs
+  updateAllBaseValues()
 }
 
 function randomizeParams() {
@@ -468,14 +719,24 @@ function randomizeParams() {
     moveDistance: Math.random() * 3 + 0.5, // 0.5 - 3.5
     decayFactor: Math.random() * 0.25 + 0.75, // 0.75 - 1.0
     depositAmount: Math.random() * 15 + 2, // 2 - 17
+    // Randomize color parameters
+    colorRemap: Math.floor(Math.random() * colorRemaps.length),
+    hueOffset: Math.random(),
+    hueSpeed: Math.random() * 0.05,
+    saturation: Math.random() * 0.5 + 0.5, // 0.5 - 1.0
+    brightness: Math.random() * 0.5 + 0.8, // 0.8 - 1.3
+    contrast: Math.random() * 0.8 + 0.8 // 0.8 - 1.6
   })
 
   // Randomize LFO parameters
   Object.keys(lfoParams).forEach(paramName => {
     const lfo = lfoParams[paramName]
 
-    // 50% chance to enable LFO for each parameter
-    if (Math.random() < 0.5) {
+    // 30% chance to enable LFO for each parameter (lower chance for color params)
+    const enableChance = paramName.includes('hue') || paramName.includes('sat') ||
+                        paramName.includes('bright') || paramName.includes('contrast') ? 0.3 : 0.5
+
+    if (Math.random() < enableChance) {
       lfo.rate = Math.random() * 0.03 + 0.005 // 0.005 - 0.035 Hz (much slower)
 
       // Parameter-specific amplitude ranges
@@ -497,6 +758,21 @@ function randomizeParams() {
           break
         case 'depositAmount':
           lfo.amplitude = Math.random() * 4 + 1 // 1 - 5
+          break
+        case 'hueOffset':
+          lfo.amplitude = Math.random() * 0.5 + 0.1 // 0.1 - 0.6
+          break
+        case 'hueSpeed':
+          lfo.amplitude = Math.random() * 0.02 + 0.002 // 0.002 - 0.022
+          break
+        case 'saturation':
+          lfo.amplitude = Math.random() * 0.3 + 0.05 // 0.05 - 0.35
+          break
+        case 'brightness':
+          lfo.amplitude = Math.random() * 0.4 + 0.05 // 0.05 - 0.45
+          break
+        case 'contrast':
+          lfo.amplitude = Math.random() * 0.3 + 0.05 // 0.05 - 0.35
           break
       }
     } else {
@@ -576,6 +852,26 @@ function animateLFOs() {
             newValue = Math.max(0.1, Math.min(20, newValue))
             params[paramName] = Math.round(newValue * 10) / 10
             break
+          case 'hueOffset':
+            newValue = (newValue % 1 + 1) % 1 // Wrap between 0 and 1
+            params[paramName] = Math.round(newValue * 1000) / 1000
+            break
+          case 'hueSpeed':
+            newValue = Math.max(0, Math.min(0.1, newValue))
+            params[paramName] = Math.round(newValue * 1000) / 1000
+            break
+          case 'saturation':
+            newValue = Math.max(0, Math.min(1, newValue))
+            params[paramName] = Math.round(newValue * 100) / 100
+            break
+          case 'brightness':
+            newValue = Math.max(0.1, Math.min(2, newValue))
+            params[paramName] = Math.round(newValue * 100) / 100
+            break
+          case 'contrast':
+            newValue = Math.max(0.1, Math.min(3, newValue))
+            params[paramName] = Math.round(newValue * 100) / 100
+            break
         }
       }
     })
@@ -637,6 +933,7 @@ onMounted(() => {
   hideTimer = setTimeout(() => {
     showNavbar.value = false
   }, 5000) // Show for 5 seconds initially
+
   randomizeParams();
 })
 
@@ -680,6 +977,10 @@ emit('update-params', { ...params })
 }
 
 .presets-section h4 {
+  color: white;
+}
+
+.color-section h4 {
   color: white;
 }
 
