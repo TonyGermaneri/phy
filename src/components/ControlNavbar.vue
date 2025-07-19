@@ -458,7 +458,7 @@
         <v-divider class="my-4" />
 
         <div class="spawn-section">
-          <h4 class="text-white mb-3">Mouse Spawning:</h4>
+          <h4 class="text-white mb-3">Touch/Mouse Spawning:</h4>
           <v-row dense>
             <!-- Spawn Rate -->
             <v-col cols="12" sm="6" md="4">
@@ -1048,6 +1048,16 @@ watch(params, (newParams) => {
 
 // Emit initial parameters
 emit('update-params', { ...params })
+
+// Function to show controls (for external access)
+function showControlsPanel() {
+  showControls.value = true
+}
+
+// Expose methods for parent component
+defineExpose({
+  showControlsPanel
+})
 </script>
 
 <style scoped>

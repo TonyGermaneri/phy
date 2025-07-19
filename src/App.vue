@@ -21,10 +21,12 @@
       :spawnRadius="simulationParams.spawnRadius"
       :isPlaying="isPlaying"
       @ready="onSimulationReady"
+      @double-tap="onDoubleTap"
     />
 
     <!-- Control navbar floating over the simulation -->
     <ControlNavbar
+      ref="controlNavbar"
       :isPlaying="isPlaying"
       @update-params="updateParams"
       @toggle-play="togglePlay"
@@ -53,6 +55,7 @@ import PhysarumTexture from './components/PhysarumTexture.vue'
 import ControlNavbar from './components/ControlNavbar.vue'
 
 const simulation = ref(null)
+const controlNavbar = ref(null)
 const isReady = ref(false)
 const isPlaying = ref(true)
 
@@ -71,8 +74,6 @@ const simulationParams = reactive({
   saturation: 0.8,
   brightness: 1.0,
   contrast: 1.0,
-  spawnRate: 5.0,
-  spawnRadius: 30.0,
   spawnRate: 5.0,
   spawnRadius: 30.0
 })
@@ -108,6 +109,12 @@ function togglePlay() {
 function resetSimulation() {
   if (simulation.value) {
     simulation.value.resetSimulation()
+  }
+}
+
+function onDoubleTap() {
+  if (controlNavbar.value) {
+    controlNavbar.value.showControlsPanel()
   }
 }
 </script>

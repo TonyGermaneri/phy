@@ -10,11 +10,49 @@
       @touchmove="onTouchMove"
       @touchend="onTouchEnd"
     ></canvas>
+
+    <!-- Touch point indicators -->
+    <div
+      v-for="(touch, index) in touchPoints"
+      :key="touch.id"
+      class="touch-indicator"
+      :style="{
+        left: (touch.x / width * 100) + '%',
+        top: (touch.y / height * 100) + '%',
+        animationDelay: (index * 0.1) + 's'
+      }"
+    >
+      <div class="touch-ripple"></div>
+      <div class="touch-label">{{ index + 1 }}</div>
+    </div>
+
+    <!-- Mouse indicator for desktop -->
+    <div
+      v-if="isMouseDown && touchPoints.length === 0"
+      class="touch-indicator mouse-indicator"
+      :style="{
+        left: (mousePos.x / width * 100) + '%',
+        top: (mousePos.y / height * 100) + '%'
+      }"
+    >
+      <div class="touch-ripple"></div>
+      <div class="touch-label">M</div>
+    </div>
+
+    <!-- Debug info -->
+    <div v-if="touchPoints.length > 0" class="debug-info">
+      Multi-touch: {{ touchPoints.length }} points active
+    </div>
+
+    <!-- Double tap feedback -->
+    <div v-if="showDoubleTapFeedback" class="double-tap-feedback">
+      Double tap detected!
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, watch } from 'vue'
 
 const canvas = ref(null)
 const props = defineProps({
@@ -48,10 +86,18 @@ let width = 0
 let height = 0
 let isMouseDown = false
 let mousePos = { x: 0, y: 0 }
+let touchPoints = reactive([]) // Make reactive so Vue can track changes for visual indicators
+const MAX_TOUCH_POINTS = 10 // Maximum number of simultaneous touches
 let time = 0
 let numParticles = 0
 
-const emit = defineEmits(['ready'])
+// Double tap detection variables
+let lastTapTime = 0
+let tapCount = 0
+const DOUBLE_TAP_DELAY = 300 // milliseconds
+const showDoubleTapFeedback = ref(false)
+
+const emit = defineEmits(['ready', 'double-tap'])
 
 // Vertex shader for full-screen quad
 const quadVertexShader = `#version 300 es
@@ -79,7 +125,8 @@ uniform float u_sensorDistance;
 uniform float u_sensorAngle;
 uniform float u_rotationAngle;
 uniform float u_moveDistance;
-uniform vec2 u_mousePos;
+uniform vec2 u_touchPositions[10];
+uniform int u_numTouchPoints;
 uniform float u_mouseInfluence;
 uniform float u_spawnRate;
 uniform float u_spawnRadius;
@@ -139,30 +186,60 @@ void main() {
     angle -= u_rotationAngle;
   }
 
-  // Mouse interaction for existing particles
-  if (u_mouseInfluence > 0.0) {
-    vec2 toMouse = u_mousePos - pos;
-    float mouseDist = length(toMouse);
-    if (mouseDist > 0.0 && mouseDist < 150.0) {
-      float mouseAngle = atan(toMouse.y, toMouse.x);
-      float influence = u_mouseInfluence * (1.0 - mouseDist / 150.0);
-      angle = mix(angle, mouseAngle, influence);
+  // Mouse/touch interaction for existing particles
+  if (u_mouseInfluence > 0.0 && u_numTouchPoints > 0) {
+    vec2 totalInfluence = vec2(0.0);
+    float totalWeight = 0.0;
+
+    // Check influence from each touch point
+    for (int i = 0; i < u_numTouchPoints && i < 10; i++) {
+      vec2 toTouch = u_touchPositions[i] - pos;
+      float touchDist = length(toTouch);
+
+      if (touchDist > 0.0 && touchDist < 150.0) {
+        float weight = 1.0 - (touchDist / 150.0);
+        totalInfluence += normalize(toTouch) * weight;
+        totalWeight += weight;
+      }
     }
 
-    // Additional spawning effect: relocate particles that are far from mouse
-    if (u_spawnRate > 0.0 && mouseDist > 200.0) {
-      vec2 spawnCoord = v_texCoord * u_particleTexSize;
-      float spawnRandom = fract(sin(dot(spawnCoord + u_time * 0.1, vec2(12.9898, 78.233))) * 43758.5453);
+    // Apply combined influence
+    if (totalWeight > 0.0) {
+      vec2 avgInfluence = totalInfluence / totalWeight;
+      float avgAngle = atan(avgInfluence.y, avgInfluence.x);
+      float influence = u_mouseInfluence * min(totalWeight, 1.0);
+      angle = mix(angle, avgAngle, influence);
+    }
 
-      // Very low probability to avoid removing too many particles
-      if (spawnRandom < u_spawnRate * 0.0005) {
-        // Teleport particle near mouse position
-        float offsetAngle = spawnRandom * 6.28318;
-        float offsetDist = spawnRandom * u_spawnRadius;
+    // Additional spawning effect: relocate particles based on nearest touch
+    if (u_spawnRate > 0.0) {
+      float nearestDist = 99999.0;
+      int nearestTouch = -1;
 
-        pos = u_mousePos + vec2(cos(offsetAngle), sin(offsetAngle)) * offsetDist;
-        angle = offsetAngle;
-        pos = clamp(pos, vec2(5.0), u_resolution - 5.0);
+      // Find nearest touch point
+      for (int i = 0; i < u_numTouchPoints && i < 10; i++) {
+        float dist = distance(pos, u_touchPositions[i]);
+        if (dist < nearestDist) {
+          nearestDist = dist;
+          nearestTouch = i;
+        }
+      }
+
+      // If particle is far from nearest touch, potentially spawn near it
+      if (nearestTouch >= 0 && nearestDist > 200.0) {
+        vec2 spawnCoord = v_texCoord * u_particleTexSize;
+        float spawnRandom = fract(sin(dot(spawnCoord + u_time * 0.1, vec2(12.9898, 78.233))) * 43758.5453);
+
+        // Very low probability to avoid removing too many particles
+        if (spawnRandom < u_spawnRate * 0.0005) {
+          // Teleport particle near the nearest touch position
+          float offsetAngle = spawnRandom * 6.28318;
+          float offsetDist = spawnRandom * u_spawnRadius;
+
+          pos = u_touchPositions[nearestTouch] + vec2(cos(offsetAngle), sin(offsetAngle)) * offsetDist;
+          angle = offsetAngle;
+          pos = clamp(pos, vec2(5.0), u_resolution - 5.0);
+        }
       }
     }
   }
@@ -606,9 +683,31 @@ function render(timestamp) {
   gl.uniform1f(gl.getUniformLocation(programs.particleUpdate, 'u_sensorAngle'), props.sensorAngle)
   gl.uniform1f(gl.getUniformLocation(programs.particleUpdate, 'u_rotationAngle'), props.rotationAngle)
   gl.uniform1f(gl.getUniformLocation(programs.particleUpdate, 'u_moveDistance'), props.moveDistance)
-  gl.uniform2f(gl.getUniformLocation(programs.particleUpdate, 'u_mousePos'), mousePos.x, mousePos.y)
-  gl.uniform1f(gl.getUniformLocation(programs.particleUpdate, 'u_mouseInfluence'), isMouseDown ? 0.1 : 0.0)
-  gl.uniform1f(gl.getUniformLocation(programs.particleUpdate, 'u_spawnRate'), isMouseDown ? props.spawnRate : 0.0)
+
+  // Set touch positions
+  const activeTouchCount = (isMouseDown || touchPoints.length > 0) ? Math.max(1, touchPoints.length) : 0
+  gl.uniform1i(gl.getUniformLocation(programs.particleUpdate, 'u_numTouchPoints'), activeTouchCount)
+
+  if (activeTouchCount > 0) {
+    const touchPositions = new Float32Array(MAX_TOUCH_POINTS * 2)
+
+    if (touchPoints.length > 0) {
+      // Use actual touch points
+      for (let i = 0; i < Math.min(touchPoints.length, MAX_TOUCH_POINTS); i++) {
+        touchPositions[i * 2] = touchPoints[i].x
+        touchPositions[i * 2 + 1] = touchPoints[i].y
+      }
+    } else if (isMouseDown) {
+      // Fall back to mouse position for desktop
+      touchPositions[0] = mousePos.x
+      touchPositions[1] = mousePos.y
+    }
+
+    gl.uniform2fv(gl.getUniformLocation(programs.particleUpdate, 'u_touchPositions'), touchPositions)
+  }
+
+  gl.uniform1f(gl.getUniformLocation(programs.particleUpdate, 'u_mouseInfluence'), activeTouchCount > 0 ? 0.1 : 0.0)
+  gl.uniform1f(gl.getUniformLocation(programs.particleUpdate, 'u_spawnRate'), activeTouchCount > 0 ? props.spawnRate : 0.0)
   gl.uniform1f(gl.getUniformLocation(programs.particleUpdate, 'u_spawnRadius'), props.spawnRadius)
 
   gl.activeTexture(gl.TEXTURE0)
@@ -751,10 +850,15 @@ function resetSimulation() {
 function onMouseDown(event) {
   isMouseDown = true
   updateMousePos(event)
+
+  // Clear touch points when using mouse (to avoid conflicts)
+  touchPoints.splice(0, touchPoints.length)
 }
 
 function onMouseMove(event) {
-  updateMousePos(event)
+  if (isMouseDown || touchPoints.length === 0) {
+    updateMousePos(event)
+  }
 }
 
 function onMouseUp() {
@@ -763,18 +867,110 @@ function onMouseUp() {
 
 function onTouchStart(event) {
   event.preventDefault()
+
+  // Double tap detection (only for single finger taps)
+  if (event.touches.length === 1) {
+    const currentTime = Date.now()
+    const timeDiff = currentTime - lastTapTime
+
+    if (timeDiff < DOUBLE_TAP_DELAY) {
+      tapCount++
+      if (tapCount === 2) {
+        // Double tap detected!
+        showDoubleTapFeedback.value = true
+        setTimeout(() => {
+          showDoubleTapFeedback.value = false
+        }, 1000)
+        emit('double-tap')
+        tapCount = 0
+        lastTapTime = 0
+        return
+      }
+    } else {
+      tapCount = 1
+    }
+    lastTapTime = currentTime
+  }
+
   isMouseDown = true
-  updateMousePos(event.touches[0])
+
+  // Clear existing touch points and add new ones
+  touchPoints.splice(0, touchPoints.length)
+  for (let i = 0; i < event.touches.length && i < MAX_TOUCH_POINTS; i++) {
+    const touch = event.touches[i]
+    const pos = convertTouchToCanvasPos(touch)
+    touchPoints.push({
+      id: touch.identifier,
+      x: pos.x,
+      y: pos.y
+    })
+  }
+
+  // Also update mouse pos for backward compatibility
+  if (touchPoints.length > 0) {
+    mousePos.x = touchPoints[0].x
+    mousePos.y = touchPoints[0].y
+  }
 }
 
 function onTouchMove(event) {
   event.preventDefault()
-  updateMousePos(event.touches[0])
+
+  // Update existing touch points
+  for (let i = 0; i < event.touches.length && i < MAX_TOUCH_POINTS; i++) {
+    const touch = event.touches[i]
+    const pos = convertTouchToCanvasPos(touch)
+
+    // Find existing touch point by ID or add new one
+    let existingTouchIndex = touchPoints.findIndex(tp => tp.id === touch.identifier)
+    if (existingTouchIndex !== -1) {
+      touchPoints[existingTouchIndex].x = pos.x
+      touchPoints[existingTouchIndex].y = pos.y
+    } else if (touchPoints.length < MAX_TOUCH_POINTS) {
+      touchPoints.push({
+        id: touch.identifier,
+        x: pos.x,
+        y: pos.y
+      })
+    }
+  }
+
+  // Update mouse pos for backward compatibility
+  if (touchPoints.length > 0) {
+    mousePos.x = touchPoints[0].x
+    mousePos.y = touchPoints[0].y
+  }
 }
 
 function onTouchEnd(event) {
   event.preventDefault()
-  isMouseDown = false
+
+  // Remove ended touches
+  const activeTouchIds = new Set(Array.from(event.touches).map(t => t.identifier))
+  for (let i = touchPoints.length - 1; i >= 0; i--) {
+    if (!activeTouchIds.has(touchPoints[i].id)) {
+      touchPoints.splice(i, 1)
+    }
+  }
+
+  // If no touches remain, set mouse down to false
+  if (touchPoints.length === 0) {
+    isMouseDown = false
+  } else {
+    // Update mouse pos for backward compatibility
+    mousePos.x = touchPoints[0].x
+    mousePos.y = touchPoints[0].y
+  }
+}
+
+function convertTouchToCanvasPos(touch) {
+  const rect = canvas.value.getBoundingClientRect()
+  const pixelRatio = Math.min(window.devicePixelRatio || 1, 1.5)
+
+  return {
+    x: ((touch.clientX - rect.left) / rect.width) * width,
+    y: ((touch.clientY - rect.top) / rect.height) * height
+  }
 }
 
 function updateMousePos(event) {
@@ -783,7 +979,7 @@ function updateMousePos(event) {
 
   // Convert mouse coordinates to canvas space (accounting for resolution scaling)
   mousePos.x = ((event.clientX - rect.left) / rect.width) * width
-  mousePos.y = ((event.clientY - rect.top) / rect.height) * height // Remove the height - to fix Y inversion
+  mousePos.y = ((event.clientY - rect.top) / rect.height) * height
 }
 
 watch(() => props.isPlaying, (isPlaying) => {
@@ -849,5 +1045,101 @@ defineExpose({
   background: #000;
   cursor: crosshair;
   touch-action: none;
+}
+
+.touch-indicator {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1;
+  transform: translate(-50%, -50%);
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.touch-ripple {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  animation: ripple 2s infinite ease-out;
+  backdrop-filter: blur(2px);
+}
+
+.touch-label {
+  position: relative;
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+  z-index: 2;
+}
+
+.mouse-indicator .touch-ripple {
+  border-color: rgba(0, 255, 255, 0.8);
+  background: rgba(0, 255, 255, 0.1);
+}
+
+.debug-info {
+  position: fixed;
+  top: 120px;
+  left: 20px;
+  color: white;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  z-index: 1001;
+  backdrop-filter: blur(10px);
+}
+
+.double-tap-feedback {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  background: rgba(0, 255, 0, 0.8);
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  z-index: 1002;
+  backdrop-filter: blur(10px);
+  animation: doubleTapFade 1s ease-out;
+}
+
+@keyframes doubleTapFade {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(0.5);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
 }
 </style>
