@@ -571,21 +571,29 @@ function setupWebGL() {
 }
 
 function resizeCanvas() {
-  const rect = canvas.value.getBoundingClientRect()
+  // Get window dimensions to ensure canvas fills the entire window
+  const windowWidth = window.innerWidth
+  const windowHeight = window.innerHeight
+
+  // Store old dimensions for recentering calculations
+  const oldWidth = width
+  const oldHeight = height
+
   const pixelRatio = Math.min(window.devicePixelRatio || 1, 1)
 
   // Use resolution parameter to scale down rendering resolution
-  width = Math.floor(rect.width * pixelRatio * props.resolution)
-  height = Math.floor(rect.height * pixelRatio * props.resolution)
+  width = Math.floor(windowWidth * pixelRatio * props.resolution)
+  height = Math.floor(windowHeight * pixelRatio * props.resolution)
 
   // Ensure minimum resolution
   width = Math.max(width, 256)
   height = Math.max(height, 256)
 
+  // Set canvas size to match window dimensions exactly
   canvas.value.width = width
   canvas.value.height = height
-  canvas.value.style.width = rect.width + 'px'
-  canvas.value.style.height = rect.height + 'px'
+  canvas.value.style.width = windowWidth + 'px'
+  canvas.value.style.height = windowHeight + 'px'
 
   if (gl) {
     gl.viewport(0, 0, width, height)
@@ -607,7 +615,61 @@ function resizeCanvas() {
       frameBuffers.trail2 = createFramebuffer(gl, textures.trail2)
       frameBuffers.particleRender = createFramebuffer(gl, textures.particleRender)
     }
+
+    // Recenter particles if this isn't the initial setup
+    if (oldWidth > 0 && oldHeight > 0 && (oldWidth !== width || oldHeight !== height)) {
+      recenterParticles(oldWidth, oldHeight)
+    }
   }
+}
+
+function recenterParticles(oldWidth, oldHeight) {
+  if (!gl || !textures.particles1 || !textures.particles2) return
+
+  // Calculate the center offset to apply to all particles
+  const offsetX = (width - oldWidth) / 2
+  const offsetY = (height - oldHeight) / 2
+
+  // Get the current particle texture size
+  const particleTexSize = Math.ceil(Math.sqrt(numParticles))
+
+  // Read current particle data from the active particle texture
+  const currentParticleTexture = currentParticleBuffer === 0 ? textures.particles1 : textures.particles2
+
+  // Use a temporary framebuffer to read the particle data
+  const tempFramebuffer = gl.createFramebuffer()
+  gl.bindFramebuffer(gl.FRAMEBUFFER, tempFramebuffer)
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, currentParticleTexture, 0)
+
+  // Read pixel data from the particle texture
+  const particleData = new Float32Array(particleTexSize * particleTexSize * 4)
+  gl.readPixels(0, 0, particleTexSize, particleTexSize, gl.RGBA, gl.FLOAT, particleData)
+
+  // Update particle positions to recenter them
+  for (let i = 0; i < numParticles; i++) {
+    const idx = i * 4
+
+    // Apply offset to x and y positions
+    particleData[idx] += offsetX       // x position
+    particleData[idx + 1] += offsetY   // y position
+
+    // Keep particles within bounds
+    particleData[idx] = Math.max(0, Math.min(width, particleData[idx]))
+    particleData[idx + 1] = Math.max(0, Math.min(height, particleData[idx + 1]))
+  }
+
+  // Update both particle textures with the recentered data
+  gl.bindTexture(gl.TEXTURE_2D, textures.particles1)
+  gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, particleTexSize, particleTexSize,
+    gl.RGBA, gl.FLOAT, particleData)
+
+  gl.bindTexture(gl.TEXTURE_2D, textures.particles2)
+  gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, particleTexSize, particleTexSize,
+    gl.RGBA, gl.FLOAT, particleData)
+
+  // Clean up temporary framebuffer
+  gl.deleteFramebuffer(tempFramebuffer)
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 }
 
 let lastTime = 0
