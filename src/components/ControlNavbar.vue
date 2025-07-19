@@ -49,6 +49,14 @@
     />
 
     <v-btn
+      icon="mdi-dice-6"
+      variant="text"
+      color="white"
+      @click="randomizeParams"
+      title="Randomize Parameters"
+    />
+
+    <v-btn
       icon="mdi-cog"
       variant="text"
       color="white"
@@ -371,6 +379,25 @@ function resetSimulation() {
 
 function loadPreset(preset) {
   Object.assign(params, preset.params)
+}
+
+function randomizeParams() {
+  // Randomize all parameters within reasonable ranges
+  Object.assign(params, {
+    numParticles: Math.floor(Math.random() * 75000) + 15000, // 15K - 90K
+    sensorDistance: Math.random() * 15 + 5, // 5 - 20
+    sensorAngle: Math.random() * Math.PI * 0.8 + 0.1, // 0.1 - 2.6 radians
+    rotationAngle: Math.random() * Math.PI * 0.4 + 0.1, // 0.1 - 1.3 radians
+    moveDistance: Math.random() * 3 + 0.5, // 0.5 - 3.5
+    decayFactor: Math.random() * 0.25 + 0.75, // 0.75 - 1.0
+    depositAmount: Math.random() * 15 + 2, // 2 - 17
+    resolution: Math.random() * 0.6 + 0.2 // 0.2 - 0.8
+  })
+  
+  // Force a simulation restart for particle count and resolution changes
+  setTimeout(() => {
+    resetSimulation()
+  }, 100)
 }
 
 // Mouse tracking functions

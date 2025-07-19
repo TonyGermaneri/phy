@@ -624,7 +624,15 @@ function resetSimulation() {
   gl.clearColor(0, 0, 0, 1)
   gl.clear(gl.COLOR_BUFFER_BIT)
   
-  // Reinitialize particles
+  // Delete old particle textures if they exist
+  if (textures.particles1) {
+    gl.deleteTexture(textures.particles1)
+    gl.deleteTexture(textures.particles2)
+    gl.deleteFramebuffer(frameBuffers.particles1)
+    gl.deleteFramebuffer(frameBuffers.particles2)
+  }
+  
+  // Reinitialize particles with current settings
   particleTexSize = initParticles()
 }
 
@@ -668,6 +676,20 @@ function updateMousePos(event) {
 watch(() => props.isPlaying, (isPlaying) => {
   if (isPlaying && !animationId) {
     animationId = requestAnimationFrame(render)
+  }
+})
+
+// Watch for resolution changes and resize canvas
+watch(() => props.resolution, () => {
+  if (gl) {
+    resizeCanvas()
+  }
+})
+
+// Watch for numParticles changes and reinitialize
+watch(() => props.numParticles, () => {
+  if (gl) {
+    resetSimulation()
   }
 })
 
