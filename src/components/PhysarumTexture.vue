@@ -6,6 +6,7 @@
       @mousedown="onMouseDown"
       @mousemove="onMouseMove"
       @mouseup="onMouseUp"
+      @mouseleave="onMouseUp"
     ></canvas>
 
   </div>
