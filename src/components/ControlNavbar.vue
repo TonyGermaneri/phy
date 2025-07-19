@@ -4,7 +4,20 @@
     class="control-navbar"
     density="compact"
     floating
-    style="backdrop-filter: blur(10px); position: fixed; top: 16px; left: 16px; right: 16px; width: auto; border-radius: 12px;"
+    :style="{ 
+      'backdrop-filter': 'blur(10px)', 
+      position: 'fixed', 
+      top: '16px', 
+      left: '16px', 
+      right: '16px', 
+      width: 'auto', 
+      'border-radius': '12px',
+      transition: 'opacity 0.8s ease-in-out',
+      opacity: showNavbar ? 1 : 0,
+      'pointer-events': showNavbar ? 'auto' : 'none'
+    }"
+    @mouseenter="onMouseEnterControls"
+    @mouseleave="onMouseLeaveControls"
   >
     <template #prepend>
       <v-btn
@@ -49,7 +62,20 @@
       v-if="showControls"
       class="controls-panel"
       color="rgba(0,0,0,0.8)"
-      style="backdrop-filter: blur(15px); position: fixed; top: 80px; left: 16px; right: 16px; border-radius: 12px; z-index: 1001;"
+      :style="{ 
+        'backdrop-filter': 'blur(15px)', 
+        position: 'fixed', 
+        top: '80px', 
+        left: '16px', 
+        right: '16px', 
+        'border-radius': '12px', 
+        'z-index': '1001',
+        transition: 'opacity 0.8s ease-in-out',
+        opacity: showNavbar ? 1 : 0,
+        'pointer-events': showNavbar ? 'auto' : 'none'
+      }"
+      @mouseenter="onMouseEnterControls"
+      @mouseleave="onMouseLeaveControls"
     >
       <v-card-text>
         <v-row dense>
@@ -215,7 +241,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, watch, onMounted, onUnmounted } from 'vue'
 
 const props = defineProps({
   isPlaying: Boolean
@@ -224,6 +250,9 @@ const props = defineProps({
 const emit = defineEmits(['update-params', 'toggle-play', 'reset'])
 
 const showControls = ref(false)
+const showNavbar = ref(true)
+let hideTimer = null
+let isMouseOverControls = ref(false)
 
 const params = reactive({
   numParticles: 50000,
@@ -343,6 +372,64 @@ function resetSimulation() {
 function loadPreset(preset) {
   Object.assign(params, preset.params)
 }
+
+// Mouse tracking functions
+function onMouseMove() {
+  showNavbar.value = true
+  clearTimeout(hideTimer)
+  
+  // Don't hide if controls are open or mouse is over controls
+  if (!showControls.value && !isMouseOverControls.value) {
+    hideTimer = setTimeout(() => {
+      showNavbar.value = false
+    }, 3000) // Hide after 3 seconds of no movement
+  }
+}
+
+function onMouseEnterControls() {
+  isMouseOverControls.value = true
+  showNavbar.value = true
+  clearTimeout(hideTimer)
+}
+
+function onMouseLeaveControls() {
+  isMouseOverControls.value = false
+  if (!showControls.value) {
+    hideTimer = setTimeout(() => {
+      showNavbar.value = false
+    }, 3000)
+  }
+}
+
+// Watch for controls panel state changes
+watch(showControls, (isOpen) => {
+  if (isOpen) {
+    // Keep navbar visible when controls are open
+    showNavbar.value = true
+    clearTimeout(hideTimer)
+  } else {
+    // Start hide timer when controls are closed
+    if (!isMouseOverControls.value) {
+      hideTimer = setTimeout(() => {
+        showNavbar.value = false
+      }, 3000)
+    }
+  }
+})
+
+// Lifecycle hooks
+onMounted(() => {
+  document.addEventListener('mousemove', onMouseMove)
+  // Start the initial hide timer
+  hideTimer = setTimeout(() => {
+    showNavbar.value = false
+  }, 5000) // Show for 5 seconds initially
+})
+
+onUnmounted(() => {
+  document.removeEventListener('mousemove', onMouseMove)
+  clearTimeout(hideTimer)
+})
 
 // Watch for parameter changes and emit them
 watch(params, (newParams) => {
