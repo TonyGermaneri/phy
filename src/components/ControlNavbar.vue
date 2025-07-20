@@ -3,15 +3,7 @@
     color="rgba(0,0,0,0.7)"
     class="control-navbar"
     density="compact"
-    floating
     :style="{
-      'backdrop-filter': 'blur(10px)',
-      position: 'fixed',
-      top: '16px',
-      left: '16px',
-      right: '16px',
-      width: 'auto',
-      'border-radius': '12px',
       transition: 'opacity 0.8s ease-in-out',
       opacity: showNavbar ? 1 : 0,
       'pointer-events': showNavbar ? 'auto' : 'none'
@@ -71,12 +63,7 @@
       class="controls-panel"
       color="rgba(0,0,0,0.8)"
       :style="{
-        'backdrop-filter': 'blur(15px)',
-        position: 'fixed',
-        top: '80px',
-        left: '16px',
-        right: '16px',
-        'border-radius': '12px',
+        top: '50px',
         'z-index': '1001',
         transition: 'opacity 0.8s ease-in-out',
         opacity: showNavbar ? 1 : 0,
@@ -86,6 +73,32 @@
       @mouseleave="onMouseLeaveControls"
     >
       <v-card-text>
+
+
+        <!-- Color Remapping Section -->
+
+        <div class="color-section">
+          <v-row dense class="mb-4">
+            <v-col cols="12">
+              <label class="control-label">{{ colorRemaps[params.colorRemap].name }}: {{ colorRemaps[params.colorRemap].description }}</label>
+              <v-slider
+                v-model="params.colorRemap"
+                :min="0"
+                :max="colorRemaps.length - 1"
+                :step="1"
+                :color="colorRemaps[params.colorRemap].color"
+                track-color="grey-darken-1"
+                :thumb-color="colorRemaps[params.colorRemap].color"
+                hide-details
+                show-ticks="always"
+                tick-size="4"
+              />
+            </v-col>
+          </v-row>
+        </div>
+
+        <v-divider class="my-4" />
+
         <v-row dense>
           <!-- Sensor Distance -->
           <v-col cols="12" sm="6" md="4">
@@ -400,30 +413,6 @@
           </v-row>
         </div>
 
-        <!-- Color Remapping Section -->
-        <v-divider class="my-4" />
-
-        <div class="color-section">
-          <h4 class="text-white mb-3">Color Remapping:</h4>
-          <v-row dense class="mb-4">
-            <v-col cols="12">
-              <label class="control-label">{{ colorRemaps[params.colorRemap].name }}: {{ colorRemaps[params.colorRemap].description }}</label>
-              <v-slider
-                v-model="params.colorRemap"
-                :min="0"
-                :max="colorRemaps.length - 1"
-                :step="1"
-                :color="colorRemaps[params.colorRemap].color"
-                track-color="grey-darken-1"
-                :thumb-color="colorRemaps[params.colorRemap].color"
-                hide-details
-                show-ticks="always"
-                tick-size="4"
-              />
-            </v-col>
-          </v-row>
-        </div>
-
         <!-- Color Parameter Controls -->
         <v-row dense>
           <!-- Hue Offset -->
@@ -624,25 +613,6 @@
           </v-row>
         </div>
 
-        <!-- Presets -->
-        <v-divider class="my-4" />
-
-        <div class="presets-section">
-          <h4 class="text-white mb-3">Presets:</h4>
-          <v-row dense>
-            <v-col cols="6" sm="4" md="3" lg="2" v-for="preset in presets" :key="preset.name">
-              <v-btn
-                @click="loadPreset(preset)"
-                :color="preset.color"
-                variant="tonal"
-                size="small"
-                block
-              >
-                {{ preset.name }}
-              </v-btn>
-            </v-col>
-          </v-row>
-        </div>
       </v-card-text>
     </v-card>
   </v-expand-transition>
@@ -749,135 +719,6 @@ const colorRemaps = [
     name: 'Ice',
     description: 'Blue → Cyan → White',
     color: 'light-blue'
-  }
-]
-
-const presets = [
-  {
-    name: 'Default',
-    color: 'blue',
-    params: {
-      numParticles: 50000,
-      sensorDistance: 9.0,
-      sensorAngle: 0.5,
-      rotationAngle: 0.3,
-      moveDistance: 1.0,
-      decayFactor: 0.95,
-      depositAmount: 5.0,
-      colorRemap: 0, // Rainbow
-      hueOffset: 0.0,
-      hueSpeed: 0.02,
-      saturation: 0.9,
-      brightness: 0.1,
-      contrast: 1.0,
-      spawnRate: 5.0,
-      spawnRadius: 30.0
-    }
-  },
-  {
-    name: 'Dense',
-    color: 'green',
-    params: {
-      numParticles: 75000,
-      sensorDistance: 12.0,
-      sensorAngle: 0.8,
-      rotationAngle: 0.4,
-      moveDistance: 0.8,
-      decayFactor: 0.92,
-      depositAmount: 8.0,
-      colorRemap: 3, // Forest
-      hueOffset: 0.0,
-      hueSpeed: 0.005,
-      saturation: 0.8,
-      brightness: 0.1,
-      contrast: 1.2,
-      spawnRate: 8.0,
-      spawnRadius: 25.0
-    }
-  },
-  {
-    name: 'Wispy',
-    color: 'purple',
-    params: {
-      numParticles: 30000,
-      sensorDistance: 15.0,
-      sensorAngle: 0.3,
-      rotationAngle: 0.2,
-      moveDistance: 1.5,
-      decayFactor: 0.98,
-      depositAmount: 3.0,
-      colorRemap: 4, // Purple Dream
-      hueOffset: 0.0,
-      hueSpeed: 0.008,
-      saturation: 0.85,
-      brightness: 0.1,
-      contrast: 1.15,
-      spawnRate: 3.0,
-      spawnRadius: 50.0
-    }
-  },
-  {
-    name: 'Chaos',
-    color: 'red',
-    params: {
-      numParticles: 40000,
-      sensorDistance: 6.0,
-      sensorAngle: 1.2,
-      rotationAngle: 0.8,
-      moveDistance: 2.0,
-      decayFactor: 0.85,
-      depositAmount: 6.0,
-      colorRemap: 1, // Fire
-      hueOffset: 0.0,
-      hueSpeed: 0.01,
-      saturation: 1.0,
-      brightness: 0.1,
-      contrast: 1.3,
-      spawnRate: 12.0,
-      spawnRadius: 20.0
-    }
-  },
-  {
-    name: 'Organic',
-    color: 'orange',
-    params: {
-      numParticles: 60000,
-      sensorDistance: 18.0,
-      sensorAngle: 0.6,
-      rotationAngle: 0.25,
-      moveDistance: 1.2,
-      decayFactor: 0.96,
-      depositAmount: 10.0,
-      colorRemap: 5, // Sunset
-      hueOffset: 0.0,
-      hueSpeed: 0.006,
-      saturation: 0.9,
-      brightness: 0.1,
-      contrast: 1.2,
-      spawnRate: 6.0,
-      spawnRadius: 40.0
-    }
-  },
-  {
-    name: 'Fast',
-    color: 'teal',
-    params: {
-      numParticles: 25000,
-      sensorDistance: 8.0,
-      sensorAngle: 0.4,
-      rotationAngle: 0.5,
-      moveDistance: 3.0,
-      decayFactor: 0.9,
-      depositAmount: 2.0,
-      colorRemap: 2, // Ocean
-      hueOffset: 0.0,
-      hueSpeed: 0.015,
-      saturation: 1.0,
-      brightness: 0.1,
-      contrast: 1.4,
-      spawnRate: 15.0,
-      spawnRadius: 15.0
-    }
   }
 ]
 

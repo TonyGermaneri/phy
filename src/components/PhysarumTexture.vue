@@ -1030,6 +1030,9 @@ function updateMousePos(event) {
 }
 
 watch(() => props.isPlaying, (isPlaying) => {
+  if (!isPlaying) {
+    animationId = 0;
+  }
   if (isPlaying && !animationId) {
     animationId = requestAnimationFrame(render)
   }
